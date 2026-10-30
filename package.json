@@ -1,0 +1,19 @@
+{
+  "name": "retirement-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "오프라인 HTML 은퇴 자산 계획과 월별 인출·안전자산 보충 시뮬레이터",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "privacy": "node scripts/privacy-check.mjs",
+    "test": "node scripts/check.mjs",
+    "test:unit": "node --test tests/unit/*.test.mjs",
+    "test:regression": "node scripts/build.mjs && node --test tests/regression.test.mjs",
+    "test:structure": "node scripts/build.mjs && node --test tests/structure.test.mjs",
+    "test:long": "node --test tests/long-run.test.mjs",
+    "check": "node scripts/check.mjs",
+    "test:plan": "node scripts/test-plan.mjs"
+  }
+}

@@ -1,0 +1,38 @@
+name: Verify simulator
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    name: Build and tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Build, validate TC definitions, and run tests
+        run: node scripts/check.mjs
+      - name: Long-run monthly stress check
+        if: matrix.node == 24
+        run: node --test tests/long-run.test.mjs
+      - name: Save standalone HTML
+        if: matrix.node == 24 && success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: retirement-simulator-html
+          path: dist/index.html
+          if-no-files-found: error
+          retention-days: 14

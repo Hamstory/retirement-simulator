@@ -1,0 +1,25 @@
+name: 오류 보고
+description: 계산이나 화면 오류를 재현 가능한 형태로 기록합니다.
+body:
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 절차와 설정
+      description: 개인정보를 제거한 최소 입력값과 실행 순서를 적어주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 결과와 실제 결과
+    validations:
+      required: true
+  - type: input
+    id: test_case
+    attributes:
+      label: 관련 TC ID
+      placeholder: TC-008, REG-004 등
+  - type: input
+    id: environment
+    attributes:
+      label: 브라우저·운영체제·버전 또는 커밋

@@ -1,0 +1,33 @@
+const fs=require('node:fs');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+const html=fs.readFileSync(require('node:path').join(__dirname,'../../dist/index.html'),'utf8');
+const engine=html.match(/<script id="calculation-engine">([\s\S]*?)<\/script>/)[1];
+const ui=html.match(/<script id="interface">([\s\S]*?)<\/script>/)[1];
+new vm.Script(ui);
+const sandbox={};vm.createContext(sandbox);vm.runInContext(engine+';globalThis.engine={DEFAULTS,simulate,validateConfig,contributionFor};',sandbox);
+const {DEFAULTS,simulate,validateConfig,contributionFor}=sandbox.engine;
+const base=()=>({...JSON.parse(JSON.stringify(DEFAULTS)),initialVti:2000,initialSchd:0,initialCash:3000,deployCash:1000,annualSaving:3600,annualWithdrawal:480,withdrawMode:"extra",monthlyBudget:200});
+const near=(a,b,eps=1e-7)=>assert.ok(Math.abs(a-b)<eps,`${a} != ${b}`);
+let c=base();let rows=simulate(c);near(rows[0].total,5000);near(rows[0].vti,2800);near(rows[0].schd,200);near(rows[0].cash,2000);assert.equal(rows.length,51);near(rows[1].saving,3600);near(rows[1].vtiContribution,2304);near(rows[1].schdContribution,576);near(rows[1].safeContribution,720);assert.equal(rows[10].working,true);assert.equal(rows[11].working,false);
+for(const s of [0,.2,.3]){
+ c={...base(),initialVti:75000*(1-s),initialSchd:75000*s,initialCash:0,deployCash:0,annualSaving:0,retireYears:0,horizon:20,safeSavingPct:0,annualWithdrawal:600};rows=simulate(c);
+ const y=((1-s)*.0105+s*.0324)*.85;
+ near(rows[1].netDividend,75000*y);near(rows[10].total,93915.40086392672);near(rows[11].netDividend/12,rows[10].total*y/12);near(rows[1].withdrawal,600);
+}
+c=base();c.savingGrowthMode='percent';c.savingGrowth=5;near(contributionFor(c,2),3969);c.savingGrowthMode='fixed';c.savingGrowth=100;near(contributionFor(c,2),3800);
+c=base();c.allocations[1]=0;rows=simulate(c);near(rows[2].vtiContribution,0);near(rows[2].schdContribution,2880);
+c={...base(),initialVti:0,initialSchd:0,initialCash:100,deployCash:0,annualSaving:0,retireYears:0,horizon:3,withdrawSource:'cashFirst',cashYield:0,annualWithdrawal:600};rows=simulate(c);near(rows[1].withdrawal,100);near(rows[1].unfunded,500);near(rows[1].total,0);near(rows[2].income,0);
+c={...base(),initialVti:100,initialSchd:0,initialCash:100,deployCash:0,annualSaving:0,retireYears:0,horizon:1,withdrawSource:'stocks',annualWithdrawal:200,vtiPriceGrowth:0,cashYield:0};rows=simulate(c);near(rows[1].withdrawal,100);near(rows[1].unfunded,100);near(rows[1].cash,100);
+c={...base(),initialVti:60000,initialSchd:15000,initialCash:0,deployCash:0,annualSaving:0,retireYears:0,horizon:2,withdrawMode:'budget',monthlyBudget:50,inflation:0};rows=simulate(c);near(rows[1].withdrawal,0);near(rows[1].income,600);near(rows[1].cash,348.6);
+c={...base(),initialVti:100,initialSchd:0,initialCash:0,deployCash:0,annualSaving:0,retireYears:0,horizon:1,vtiPriceGrowth:0,schdPriceGrowth:0,cashYield:0,withdrawMode:'budget',monthlyBudget:100,inflation:0};rows=simulate(c);near(rows[1].income,100.8925);near(rows[1].unfunded,1099.1075);
+c=base();c.deployCash=4000;assert.ok(validateConfig(c));c=base();c.retireYears=0;c.horizon=1;assert.equal(simulate(c).length,2);
+c=base();c.inflation=0;assert.ok(simulate(c).every(r=>r.deflator===1));
+c={...base(),retireYears:0,initialVti:75000,initialSchd:0,initialCash:0,deployCash:0,inflateWithdrawal:true,inflation:2,horizon:2,annualWithdrawal:600};rows=simulate(c);near(rows[1].withdrawal,600);near(rows[2].withdrawal,612);
+const priority={...base(),initialVti:100,initialSchd:200,initialCash:50,deployCash:0,annualSaving:0,retireYears:0,horizon:2,withdrawSource:'vtiFirst',annualWithdrawal:60,vtiPriceGrowth:0,schdPriceGrowth:0,vtiDividendGrowth:0,schdDividendGrowth:0,cashYield:0,inflation:0};
+rows=simulate(priority);near(rows[1].vti,40);near(rows[1].schd,200);near(rows[1].cash,50);near(rows[2].vti,0);near(rows[2].schd,180);near(rows[2].stockSold,60);
+rows=simulate({...priority,annualWithdrawal:150});near(rows[1].vti,0);near(rows[1].schd,150);near(rows[1].cash,50);near(rows[1].unfunded,0);
+rows=simulate({...priority,annualWithdrawal:400});near(rows[1].vti,0);near(rows[1].schd,0);near(rows[1].cash,50);near(rows[1].unfunded,100);
+rows=simulate({...priority,initialVti:0});near(rows[1].schd,140);near(rows[1].cash,50);
+rows=simulate({...priority,withdrawMode:'budget',monthlyBudget:20});near(rows[1].income,240);near(rows[1].vti,0);near(rows[1].schd,60+(100*.0105+200*.0324)*.85);near(rows[1].cash,50);
+console.log('PASS: existing calculations; VTI-first priority; SCHD fallback within and across years; insufficient stocks; no VTI; target-budget mode; cash preserved.');

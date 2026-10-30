@@ -1,0 +1,426 @@
+[
+  {
+    "id": "TC-001",
+    "title": "초기 현금 이동은 총자산을 늘리지 않는다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "기본 자산과 최초 현금 투자액이 설정되어 있다.",
+    "steps": "기본 설정으로 연간 계산의 시작 행을 확인한다.",
+    "expected": "시작 총자산은 기존 자산 합계이며, 투자한 현금만 안전자산에서 주식으로 이동한다."
+  },
+  {
+    "id": "TC-002",
+    "title": "저축 종료 다음 해부터 인출한다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "저축 기간이 10년이다.",
+    "steps": "저축 종료 행과 그 다음 연도의 단계를 확인한다.",
+    "expected": "종료 연도는 저축, 다음 연도는 은퇴로 표시된다."
+  },
+  {
+    "id": "TC-003",
+    "title": "저축액의 정률·정액 증가를 구분한다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "첫해 저축 5,000만원이며 증가 방식만 다르다.",
+    "steps": "정률 5%와 정액 100만원으로 각각 3번째 저축액을 구한다.",
+    "expected": "각각 5,512.5만원과 5,200만원이다."
+  },
+  {
+    "id": "TC-004",
+    "title": "안전자산과 주식 내 비중으로 신규 자금을 나눈다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "연간 저축 5,000만원·안전자산 40%·주식 내 VTI 80%이다.",
+    "steps": "첫해 신규 자금 배분을 계산한다.",
+    "expected": "안전자산 2,000·VTI 2,400·SCHD 600만원으로 합계가 보존된다."
+  },
+  {
+    "id": "TC-005",
+    "title": "연도별 안전자산 공란은 기본 비중을 따른다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "안전자산 기본 20%, 2년차만 100%를 입력했다.",
+    "steps": "두 해의 신규 저축 배분을 확인한다.",
+    "expected": "1년차는 기본 20%, 2년차는 안전자산 100%를 적용한다."
+  },
+  {
+    "id": "TC-006",
+    "title": "VTI 우선 매도 후 SCHD로 부족분을 충당한다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "VTI 100·SCHD 200·현금 50만원, 추가 인출 150만원이다.",
+    "steps": "연간 VTI 우선 매도를 실행한다.",
+    "expected": "VTI는 0, SCHD는 150, 현금은 50만원이다."
+  },
+  {
+    "id": "TC-007",
+    "title": "월간 생활비는 안전자산을 먼저 사용한다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "현금 100만원·주식 1,000만원, 월 생활비 10만원, 수익률은 0이다.",
+    "steps": "월별 보충 없음 전략으로 1년 계산한다.",
+    "expected": "현금 100만원부터 쓰고 주식을 20만원 매도해 생활비 120만원을 충당한다."
+  },
+  {
+    "id": "TC-008",
+    "title": "월간 보충은 자산 이동이며 수입을 만들지 않는다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "수익률·배당·이자·물가가 모두 0이며 초기 총자산 1,100만원이다.",
+    "steps": "세 전략으로 3년간 매월 10만원을 인출한다.",
+    "expected": "전략과 무관하게 기말 740만원이고, 보충은 생활비 수입을 늘리지 않는다."
+  },
+  {
+    "id": "TC-009",
+    "title": "매년 보충은 목표 잔액까지 매도한다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "월 10만원, 목표 3년치, 연말 현금 0이다.",
+    "steps": "매년 보충 전략의 첫 연말을 확인한다.",
+    "expected": "360만원을 매도해 안전자산으로 옮긴다."
+  },
+  {
+    "id": "TC-010",
+    "title": "하락 중 조건부 보충은 최소 잔액까지만 채운다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "첫해 주가가 35% 하락하고 목표 3년·최소 1년이다.",
+    "steps": "조건부 보충 전략으로 계산한다.",
+    "expected": "회복 조건은 거짓이고 최소 잔액 120만원까지만 보충한다."
+  },
+  {
+    "id": "TC-011",
+    "title": "소폭 반등만으로 이전 고점 회복으로 보지 않는다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "첫해 -35%, 다음 해 +10%, 회복 허용 하락률 10%이다.",
+    "steps": "조건부 보충의 2년차 판단을 확인하고 허용 범위를 40%로 바꿔 비교한다.",
+    "expected": "10%에서는 최소 잔액만 유지하고, 40%에서는 목표까지 보충한다."
+  },
+  {
+    "id": "TC-012",
+    "title": "보충 매도와 큰 현금 잔액은 시장 회복 지수를 바꾸지 않는다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "시장 경로는 같고 초기 현금만 크게 다르다.",
+    "steps": "두 포트폴리오의 시장 고점 대비 하락률을 비교한다.",
+    "expected": "현금·매도 등 자금 흐름과 무관하게 시장 지수의 하락률은 같다."
+  },
+  {
+    "id": "TC-013",
+    "title": "마지막 계산 연말에는 다음 해를 위한 보충을 하지 않는다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "계산 기간 마지막 해이다.",
+    "steps": "매년 보충 전략의 마지막 연말을 확인한다.",
+    "expected": "추가 보충 매도는 0이다."
+  },
+  {
+    "id": "TC-014",
+    "title": "연말 추가 자산은 받은 해 수익과 이전 생활비에 쓰이지 않는다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "초기 자산이 없고 첫 연말에 안전자산으로 추가 1,000만원을 받는다.",
+    "steps": "월 10만원 생활비로 2년 계산한다.",
+    "expected": "첫해 수입은 0·연말 현금은 1,000, 다음 해 말 현금은 880만원이다."
+  },
+  {
+    "id": "TC-015",
+    "title": "추가 자산과 저축을 같은 연도 비율로 배분한다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "연간 저축 5,000·추가 자산 10,000만원, 안전자산 40%·주식 내 VTI 80%이다.",
+    "steps": "첫해 말 자산을 확인한다.",
+    "expected": "현금 6,000·VTI 7,200·SCHD 1,800만원이다."
+  },
+  {
+    "id": "TC-016",
+    "title": "연말 회복해도 월 중 생활비 부족·소진 기록을 지우지 않는다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "연중 자산 소진 후 연말 추가 자산을 받는다.",
+    "steps": "경로 요약의 첫 부족 월과 소진 여부를 확인한다.",
+    "expected": "연말 잔액이 양수여도 1월 부족과 연중 소진이 기록된다."
+  },
+  {
+    "id": "TC-017",
+    "title": "자산이 없으면 보충으로 돈을 만들거나 잔액을 음수로 만들지 않는다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "초기 자산이 0이고 생활비가 발생한다.",
+    "steps": "매년 보충 전략을 반복한다.",
+    "expected": "잔액과 보충 매도는 0이고 미충당 인출만 발생한다. 음수 자산은 없다."
+  },
+  {
+    "id": "TC-018",
+    "title": "12월 급락이 이전 월 배당을 소급 삭감하지 않는다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "연 배당 12%·월별 성장 0이며 마지막 달에만 주가가 40% 하락한다.",
+    "steps": "월별 배당을 합산한다.",
+    "expected": "이전 월의 배당을 소급 삭감하지 않아 연간 배당은 1,200만원이다."
+  },
+  {
+    "id": "TC-019",
+    "title": "현재 가치 현금흐름은 월별 물가로 환산한다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "충분한 자산, 현재 생활비 월 10만원, 물가 3%이다.",
+    "steps": "월별로 계산한 수입과 목표의 현재 가치를 확인한다.",
+    "expected": "실질 월평균 생활비와 목표가 각각 10만원이다."
+  },
+  {
+    "id": "TC-020",
+    "title": "같은 난수 번호는 같은 월별 시장 경로를 만든다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "동일한 설정과 난수 번호 42이다.",
+    "steps": "경로를 두 번 만들고 번호 43 경로와도 비교한다.",
+    "expected": "42끼리는 동일하고 43과는 다르다."
+  },
+  {
+    "id": "TC-021",
+    "title": "은퇴 후만 변동시키면 은퇴 시작 자산이 기본 계산과 같다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "변동 적용 기간을 은퇴 후만으로 선택했다.",
+    "steps": "기본 계산과 월별 계산의 은퇴 시작 자산을 비교한다.",
+    "expected": "은퇴 시작 자산이 오차 허용 범위 내에서 같다."
+  },
+  {
+    "id": "TC-022",
+    "title": "이전 30년 비중 설정을 손실 없이 90년으로 확장한다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "30개 연도 비중만 저장한 이전 버전 설정이다.",
+    "steps": "설정을 정규화한다.",
+    "expected": "기존 30년을 보존하고 90년으로 확장하며 추가 자산은 0으로 채운다."
+  },
+  {
+    "id": "TC-023",
+    "title": "월간·연간 생활비 항목을 월평균으로 합산한다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "월 관리비 30만원·연간 보험료 120만원이다.",
+    "steps": "월평균 생활비 합계를 구한다.",
+    "expected": "합계는 월 40만원이다."
+  },
+  {
+    "id": "TC-024",
+    "title": "잘못된 비중·추가 자산·보충 조건을 거부한다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "비중 공란 배열·음수 추가 자산·최소 연수 초과·잘못된 상관계수·NaN 입력이다.",
+    "steps": "각 설정의 유효성을 검사한다.",
+    "expected": "모두 오류 메시지를 반환한다."
+  },
+  {
+    "id": "REG-001",
+    "title": "기존 연간 계산과 인출 우선순위",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/regression.test.mjs",
+    "precondition": "tests/regression/test-planner.cjs의 기존 회귀 시나리오를 유지한다. DOM 검증은 실제 브라우저가 아닌 격리된 대역이다.",
+    "steps": "기본 자산 배분, 기존 배당 예시, VTI 우선·비례·현금 우선 인출을 실행한다.",
+    "expected": "기존 7.5억원 예시와 매도 순서·미충당·안전자산 보존 조건을 유지한다."
+  },
+  {
+    "id": "REG-002",
+    "title": "이름 있는 기록 저장·복원·실패 보호",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/regression.test.mjs",
+    "precondition": "tests/regression/test-records.cjs의 기존 회귀 시나리오를 유지한다. DOM 검증은 실제 브라우저가 아닌 격리된 대역이다.",
+    "steps": "복수 기록, 삭제/되돌리기, JSON, 저장 공간 오류, 손상된 저장소를 검증한다.",
+    "expected": "전체 설정이 독립적으로 복원되고 실패하거나 손상된 기록을 덮어쓰지 않는다."
+  },
+  {
+    "id": "REG-003",
+    "title": "기존 연간 확률 경로와 순서 위험",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/regression.test.mjs",
+    "precondition": "tests/regression/test-stress.cjs의 기존 회귀 시나리오를 유지한다. DOM 검증은 실제 브라우저가 아닌 격리된 대역이다.",
+    "steps": "0 변동성, 고정 시드, 하락 순서, 상관계수, 장기 연간 경로를 확인한다.",
+    "expected": "기존 계산·난수·비음수 자산·백분위 순서의 불변식을 유지한다."
+  },
+  {
+    "id": "REG-004",
+    "title": "스트레스 실행·무효화·취소·CSV",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/regression.test.mjs",
+    "precondition": "tests/regression/test-stress-ui.cjs의 기존 회귀 시나리오를 유지한다. DOM 검증은 실제 브라우저가 아닌 격리된 대역이다.",
+    "steps": "격리 DOM에서 실행, 설정 변경, 취소, 재실행, CSV를 검증한다.",
+    "expected": "낡은 결과를 숨기고 취소된 실행이 새 설정을 덮어쓰지 않으며 CSV 열 수가 일치한다."
+  },
+  {
+    "id": "REG-005",
+    "title": "연도별 안전자산·생활비 항목·수익률 표시",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/regression.test.mjs",
+    "precondition": "tests/regression/test-budget-allocation.cjs의 기존 회귀 시나리오를 유지한다. DOM 검증은 실제 브라우저가 아닌 격리된 대역이다.",
+    "steps": "격리 DOM에서 개별·일괄 비중, 월간/연간 생활비, 합계 적용, 수익률 표시를 검증한다.",
+    "expected": "목표 생활비는 명시적으로 반영할 때만 바뀌고 비중·항목은 저장/복원된다."
+  },
+  {
+    "id": "REG-006",
+    "title": "월별 자금 조달·세 보충 전략·추가 자산",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/regression.test.mjs",
+    "precondition": "tests/regression/test-buffer.cjs의 기존 회귀 시나리오를 유지한다. DOM 검증은 실제 브라우저가 아닌 격리된 대역이다.",
+    "steps": "월별 부족, 회복 조건, 추가 자산, 늦은 연도 입력, 세 전략 비교와 CSV를 검증한다.",
+    "expected": "보충 이중 계상·미래 정보 참조가 없고 연말 수령 시점과 모든 새 설정이 유지된다."
+  },
+  {
+    "id": "STR-001",
+    "title": "모듈 엔진과 빌드된 HTML 엔진의 기본 계산이 같다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/structure.test.mjs",
+    "precondition": "node scripts/build.mjs를 실행한 dist/index.html이 있다.",
+    "steps": "모듈과 HTML 스크립트로 동일한 기본 계산을 각각 실행한다.",
+    "expected": "연도별 결과 JSON이 정확히 같고 화면 스크립트 구문 분석이 성공한다."
+  },
+  {
+    "id": "STR-002",
+    "title": "DOM ID는 유일하고 모든 label과 기본 필드의 대상이 존재한다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/structure.test.mjs",
+    "precondition": "node scripts/build.mjs를 실행한 dist/index.html이 있다.",
+    "steps": "빌드 HTML의 정적 ID와 label, 설정 필드를 검사한다.",
+    "expected": "중복 ID나 빠진 입력 대상이 없다."
+  },
+  {
+    "id": "STR-003",
+    "title": "HTML은 외부 런타임 없이 완성된 한 파일이다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/structure.test.mjs",
+    "precondition": "node scripts/build.mjs를 실행한 dist/index.html이 있다.",
+    "steps": "빌드 표식·외부 스크립트·외부 스타일 참조를 검사한다.",
+    "expected": "빌드 표식이 남지 않고 필요한 CSS/JS가 모두 포함된다."
+  },
+  {
+    "id": "STR-004",
+    "title": "정적 HTML 요소의 열림·닫힘 구조가 맞는다",
+    "priority": "P1",
+    "mode": "auto",
+    "file": "tests/structure.test.mjs",
+    "precondition": "node scripts/build.mjs를 실행한 dist/index.html이 있다.",
+    "steps": "스크립트·스타일을 제외한 정적 요소의 스택을 검사한다.",
+    "expected": "불일치하거나 닫히지 않은 요소가 없다."
+  },
+  {
+    "id": "STR-005",
+    "title": "커밋한 Pages HTML은 현재 소스 빌드와 일치한다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/structure.test.mjs",
+    "precondition": "npm run build로 Pages 파일을 생성했다.",
+    "steps": "dist/index.html과 커밋된 docs/index.html 및 .nojekyll을 검사한다.",
+    "expected": "HTML 내용이 정확히 같고 .nojekyll이 존재한다."
+  },
+  {
+    "id": "STR-006",
+    "title": "공개 기본값·소스·빌드·사용 가능한 커밋 이력이 개인정보 검사를 통과한다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/structure.test.mjs",
+    "precondition": "공개용 가상 기본값과 noreply 커밋 정책이 적용되어 있다.",
+    "steps": "소스와 생성 HTML의 이메일·개인 경로·인증키 패턴과 사용 가능한 HEAD 이력을 검사한다.",
+    "expected": "실제 사용자 자료나 개인 이메일이 발견되면 값을 로그로 출력하지 않고 실패한다. 자동 검사 후에도 수동 검토는 필요하다."
+  },
+  {
+    "id": "LNG-001",
+    "title": "1000개 동일 월별 경로에서 세 전략을 60년간 검증한다",
+    "priority": "P1",
+    "mode": "long",
+    "file": "tests/long-run.test.mjs",
+    "precondition": "기본 설정·저축 10년·은퇴 60년·난수 번호 42이다.",
+    "steps": "1000개 월별 경로 각각에 세 보충 전략을 적용한다.",
+    "expected": "모든 경로에서 행 수 71개이며 자산·수입·미충당 금액이 유한한 0 이상이다."
+  },
+  {
+    "id": "MAN-001",
+    "title": "데스크톱·모바일 레이아웃",
+    "priority": "P1",
+    "mode": "manual",
+    "precondition": "실제 브라우저에서 1440px와 390px 화면으로 연다.",
+    "steps": "설정 열기, 긴 연도별 표와 스트레스 비교표를 스크롤한다.",
+    "expected": "입력이 잘리거나 겹치지 않고 표는 가로 스크롤로 접근 가능하다."
+  },
+  {
+    "id": "MAN-002",
+    "title": "같은 파일 위치에서 실제 브라우저 기록 유지",
+    "priority": "P1",
+    "mode": "manual",
+    "precondition": "같은 브라우저와 같은 파일 경로로 열었다.",
+    "steps": "서로 다른 이름의 기록 2개를 저장하고 새로고침 후 각각 불러온다.",
+    "expected": "연도별 추가 자산·비중·생활비 항목·스트레스 가정까지 정확히 복원된다."
+  },
+  {
+    "id": "MAN-003",
+    "title": "실제 JSON 다운로드·업로드 왕복",
+    "priority": "P1",
+    "mode": "manual",
+    "precondition": "추가 자산과 연도별 배분을 변경한 기록이 있다.",
+    "steps": "JSON 내보내기, 입력 변경, 파일 불러오기를 실행한다.",
+    "expected": "파일 선택과 다운로드가 작동하고 저장한 값이 모두 복원된다."
+  },
+  {
+    "id": "MAN-004",
+    "title": "그래프와 구매력 표시 확인",
+    "priority": "P1",
+    "mode": "manual",
+    "precondition": "스트레스 테스트를 완료했다.",
+    "steps": "초반·후반 급락과 최저 경로를 선택하고 현재 구매력 표시를 바꾼다.",
+    "expected": "선택 경로·안전자산 그래프·금액 기준이 함께 바뀌며 범례가 읽힌다."
+  },
+  {
+    "id": "MAN-005",
+    "title": "키보드 조작과 진행 중 취소",
+    "priority": "P1",
+    "mode": "manual",
+    "precondition": "키보드만 사용하고 반복 수를 5000으로 설정한다.",
+    "steps": "Tab으로 설정을 이동하고 실행 중 생활비를 수정한다.",
+    "expected": "포커스가 보이고 조작 가능하며 이전 실행이 새 설정의 결과로 표시되지 않는다."
+  },
+  {
+    "id": "MAN-006",
+    "title": "실제 CSV 파일과 한글·열 정렬",
+    "priority": "P1",
+    "mode": "manual",
+    "precondition": "계산과 스트레스 테스트를 완료했다.",
+    "steps": "두 CSV를 내려받아 텍스트 편집기 또는 스프레드시트에서 연다.",
+    "expected": "UTF-8 한글과 헤더·데이터 열이 맞고 보충 매도·추가 자산·현재 가치 열이 구분된다."
+  }
+]

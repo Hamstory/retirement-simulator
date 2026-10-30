@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>나의 은퇴 자산 계획</title>
+<style>
+:root{--bg:#f4f5f1;--paper:#fff;--ink:#1d3432;--muted:#677a76;--line:#dce4df;--teal:#176c60;--mint:#e5f1ea;--gold:#be8538;--blue:#426a9c;--red:#ac443a;--shadow:0 8px 30px #173b3010}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #73af9e;outline-offset:3px}button{border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 13px;border-radius:8px;font-weight:600}button:hover{background:#eff5f0}.primary{background:var(--teal);border-color:var(--teal);color:#fff}.primary:hover{background:#12584e}.shell{max-width:1520px;margin:auto;padding:32px 34px 46px}header{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:25px}.eyebrow{font-size:11px;letter-spacing:2px;color:var(--teal);font-weight:750}h1{font-size:29px;letter-spacing:-1.1px;line-height:1.3;margin:6px 0}h2{font-size:17px;letter-spacing:-.4px;margin:0}h3{font-size:14px;margin:0}.subtitle{color:var(--muted);margin:5px 0 0;font-size:13px}.toolbar{display:flex;gap:7px;flex-wrap:wrap}.layout{display:grid;grid-template-columns:326px minmax(0,1fr);gap:22px;align-items:start}.panel,.card{border:1px solid var(--line);background:var(--paper);border-radius:14px;box-shadow:var(--shadow)}.sidebar{padding:22px}.section-title{display:flex;align-items:center;gap:9px;margin-bottom:15px}.step{display:inline-flex;width:23px;height:23px;align-items:center;justify-content:center;background:var(--mint);border-radius:7px;font-size:11px;font-weight:750;color:var(--teal)}.section{padding-bottom:20px;margin-bottom:20px;border-bottom:1px solid var(--line)}.section:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}.field{margin-top:13px}.field label{display:block;font-size:12px;font-weight:650;margin-bottom:5px}.inputbox{display:flex;align-items:center;gap:7px}.inputbox input,.inputbox select{min-width:0;width:100%;height:37px;background:#f6faf7;color:#17624f;border:1px solid #ccdcd2;border-radius:7px;padding:6px 10px;font-variant-numeric:tabular-nums}.inputbox select{font-size:12px}.unit{font-size:11px;color:var(--muted);white-space:nowrap;min-width:23px}.help{font-size:11px;color:var(--muted);line-height:1.65;margin:5px 0 0}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px}.range-line{display:flex;align-items:center;gap:12px}.range-line input[type=range]{width:100%;accent-color:var(--teal)}.range-value{min-width:46px;font-size:19px;font-weight:750;color:var(--teal)}details summary{cursor:pointer;font-size:13px;font-weight:650;list-style-position:outside;margin-left:14px}details[open] summary{margin-bottom:12px}.main{min-width:0}.topline{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:13px}.small{font-size:12px;color:var(--muted)}.switch{display:inline-flex;align-items:center;gap:7px;font-size:12px;white-space:nowrap}.switch input{accent-color:var(--teal)}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.metric{padding:19px 18px;border-radius:12px;border:1px solid var(--line);background:white;min-height:122px}.metric.featured{background:var(--teal);border-color:var(--teal);color:#fff}.metric-label{font-size:12px;color:var(--muted)}.featured .metric-label,.featured .metric-foot{color:#cce4dc}.metric-value{font-size:30px;font-weight:750;letter-spacing:-1.1px;line-height:1.35;margin:8px 0 3px;white-space:nowrap;font-variant-numeric:tabular-nums}.metric-value span{font-size:14px;font-weight:550;letter-spacing:0}.metric-foot{font-size:11px;color:var(--muted)}.chart-panel{padding:21px 22px 14px;margin-top:16px}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11px;color:var(--muted)}.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}.chart{width:100%;height:auto;display:block;overflow:visible}.chart-note{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:14px;margin:5px 0 0}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.compact{padding:20px}.split-row{display:flex;justify-content:space-between;gap:12px;margin:12px 0;font-size:12px}.split-row strong{font-variant-numeric:tabular-nums}.stack{display:flex;height:10px;border-radius:6px;overflow:hidden;background:#edf1ed;margin:14px 0}.stack span{transition:width .15s}.soft-note{padding:11px 13px;background:#f1f6f0;border-radius:8px;font-size:12px;color:#45675a;line-height:1.7}.warning{background:#fff2e8;border:1px solid #f2d1b4;color:#92522e;padding:12px 15px;border-radius:9px;margin-bottom:13px;font-size:12px}.error{background:#fcecea;color:#943f35;border-color:#e8b8b1}.hidden{display:none!important}.schedule-panel{margin-top:16px;padding:21px 22px}.schedule-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:12px 0}.schedule-tools select{border:1px solid var(--line);border-radius:7px;padding:7px;background:#fff;color:var(--ink);font-size:12px}.scroll{overflow:auto;max-height:385px;border:1px solid var(--line);border-radius:9px}table{width:100%;border-collapse:collapse;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:12px}th{font-weight:600;color:#5a7168;background:#f1f5f0;text-align:right;position:sticky;top:0;z-index:1}td,th{padding:10px 12px;border-bottom:1px solid #e7ece7;text-align:right}td:first-child,th:first-child{text-align:left}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#f7faf6}.retired-row{background:#f2f7ed}.allocation-input{width:68px;padding:5px 7px;border:1px solid #bbd4c7;background:#f1f8f2;border-radius:6px;text-align:right;color:#17624f}.ratio-bar{display:flex;width:100%;min-width:80px;height:5px;background:#e4c999;border-radius:3px;overflow:hidden;margin-top:5px}.ratio-bar i{height:100%;background:var(--teal)}.detail-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.status{color:var(--teal);font-size:11px;min-height:18px}.method{margin-top:16px;padding:18px 22px}.method-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}.method p{font-size:12px;color:var(--muted);margin:8px 0}.method a{color:var(--teal);text-underline-offset:3px}.formula{font-family:ui-monospace,monospace;background:#f1f5f0;border-radius:7px;padding:10px;font-size:11px;color:#48645b;white-space:normal}footer{margin-top:22px;color:var(--muted);font-size:11px;display:flex;justify-content:space-between;gap:16px}.file-input{display:none}.checkline{display:flex;align-items:center;gap:7px;font-size:12px;margin-top:10px}.checkline input{accent-color:var(--teal)}.preset-link{padding:0;background:none;border:0;text-decoration:underline;text-underline-offset:3px;font-size:11px;font-weight:500;color:var(--teal)}.preset-link:hover{background:none}.empty{padding:24px;color:var(--muted);font-size:12px;text-align:center}.hint{font-size:11px;color:var(--muted);margin:8px 0 0}.negative{color:var(--red)}@media(min-width:1350px){.sidebar{position:sticky;top:18px;max-height:calc(100vh - 36px);overflow:auto;scrollbar-width:thin}}@media(max-width:1050px){.shell{padding:24px 20px}.layout{grid-template-columns:290px minmax(0,1fr);gap:15px}.metric{padding:15px 12px}.metric-value{font-size:24px}.pair{grid-template-columns:1fr}.legend{gap:8px}.chart-panel,.schedule-panel{padding:18px 15px}}@media(max-width:760px){header{align-items:flex-start;flex-direction:column}.layout{grid-template-columns:1fr}.sidebar{display:grid;grid-template-columns:1fr 1fr;gap:0 22px}.sidebar .section:last-child{grid-column:1/-1}.section{margin-bottom:14px;padding-bottom:14px}.shell{padding:20px 14px}h1{font-size:25px}.metrics{gap:8px}.metric{padding:14px 10px;min-height:113px}.metric-value{font-size:23px}.metric-label,.metric-foot{font-size:10px}.topline{flex-wrap:wrap}.panel-head{align-items:flex-start;flex-direction:column}.method-grid{grid-template-columns:1fr}.pair{grid-template-columns:1fr 1fr}.chart-note{flex-direction:column;gap:0}td,th{padding:9px}.small{font-size:11px}}@media(max-width:450px){.sidebar{display:block}.metrics{grid-template-columns:1fr}.metric{min-height:0;display:grid;grid-template-columns:1fr 1fr;align-items:center}.metric-value{grid-row:1/3;grid-column:2;text-align:right;font-size:28px;margin:0}.pair{grid-template-columns:1fr}.toolbar button{font-size:12px;padding:7px 9px}footer{flex-direction:column;gap:3px}}@media print{body{background:#fff}.shell{padding:0}.layout{display:block}.sidebar,.toolbar,.schedule-tools,footer button{display:none}.card,.panel,.metric{box-shadow:none;break-inside:avoid}.metrics{grid-template-columns:repeat(3,1fr)}.scroll{max-height:none;overflow:visible}.method{break-before:page}.chart{max-height:300px}.schedule-panel{break-inside:avoid}button{display:none}}
+
+.mobile-settings{display:none}input:disabled{opacity:.45;background:#f0f1ee}.model-scope{margin-top:12px;color:var(--muted);font-size:11px}@media(max-width:760px){.mobile-settings{display:inline-flex}.sidebar{display:none}body.settings-open .sidebar{display:grid}}@media(max-width:450px){body.settings-open .sidebar{display:block}}
+.history-panel{padding:20px 22px;margin-bottom:22px}.history-head{display:flex;justify-content:space-between;align-items:center;gap:12px}.history-form{display:flex;align-items:flex-end;gap:10px;margin:15px 0}.history-form .field{margin:0;flex:1}.history-form input{width:100%;min-width:0;border:1px solid #ccdcd2;border-radius:7px;background:#f6faf7;padding:8px 10px;color:#17624f;height:39px}.history-list{display:grid;gap:9px;max-height:360px;overflow:auto}.history-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 15px;border:1px solid var(--line);border-radius:9px;background:#fafcf9}.history-copy{min-width:0}.history-name{font-size:13px;font-weight:700;overflow-wrap:anywhere}.history-meta{color:var(--muted);font-size:11px;margin-top:3px}.history-actions{display:flex;gap:6px;flex-shrink:0}.history-actions button{font-size:12px;padding:6px 9px}.history-tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}.history-tools button{font-size:12px}.history-status{font-size:12px;color:var(--teal);margin-bottom:10px;min-height:20px}.history-status.failed{color:var(--red)}.history-status button{margin-left:8px}@media(max-width:600px){.history-panel{padding:17px 15px}.history-item{align-items:flex-start;flex-direction:column;gap:10px}.history-form{align-items:stretch;flex-direction:column}.history-actions{align-self:flex-end}}@media print{.history-panel{display:none}}
+
+.stress-panel{padding:22px;margin-top:16px}.stress-intro{font-size:12px;color:var(--muted);margin:7px 0 15px}.stress-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}.stress-controls .field{margin-top:10px}.stress-advanced{margin-top:16px;padding:13px 15px;background:#f6f9f5;border:1px solid var(--line);border-radius:9px}.stress-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px}.stress-status{font-size:12px;color:var(--teal);margin:10px 0;min-height:20px}.stress-panel .metrics{margin:17px 0}.stress-panel .metric-value{font-size:26px}.stress-panel .metric{min-height:118px;padding:15px 13px}.stress-table{margin:13px 0}.stress-panel .panel-head{margin-top:18px}.stress-trace{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0 10px}.stress-trace select{max-width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:white;color:var(--ink)}.stress-method{margin-top:16px}.stress-method p{font-size:11px;color:var(--muted)}.stress-progress{width:100%;height:7px;accent-color:var(--teal);display:block;margin:7px 0}.stress-panel button:disabled{opacity:.5;cursor:wait}.stress-label{font-size:11px;color:var(--teal);background:var(--mint);padding:3px 8px;border-radius:6px}@media(max-width:600px){.stress-panel{padding:18px 15px}.stress-controls{grid-template-columns:1fr}.stress-panel .metrics{grid-template-columns:1fr}.stress-panel .metric{min-height:0}.stress-panel .metric-value{font-size:25px}}@media print{.stress-actions,.stress-controls,.stress-advanced,.stress-progress{display:none}.stress-panel{break-inside:auto}}
+
+.active-rates{padding:11px 13px;background:#f1f6f0;border:1px solid var(--line);border-radius:9px;margin-bottom:17px;display:grid;gap:5px;font-size:12px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.active-rates span:first-child{color:var(--teal)}.active-rates span:nth-child(2){color:#966723}.active-rates .help{margin:0}.budget-editor{margin-top:14px;padding:12px;background:#f7faf6;border:1px solid var(--line);border-radius:8px}.budget-items{display:grid;gap:10px;margin:12px 0}.budget-item{display:grid;grid-template-columns:minmax(0,1fr) 76px 43px;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line)}.budget-item input,.budget-item select{min-width:0;width:100%;padding:5px 7px;height:33px;border:1px solid #ccdcd2;border-radius:6px;background:#fff;color:var(--ink);font-size:11px}.budget-name{grid-column:1/-1}.budget-item .budget-remove{padding:4px;font-size:11px;height:33px}.budget-tools{display:flex;gap:5px;flex-wrap:wrap}.budget-tools button{font-size:11px;padding:5px 7px}.budget-total{display:flex;justify-content:space-between;gap:5px;font-size:12px;margin:12px 0}.budget-editor>.primary{font-size:11px;padding:6px 8px;width:100%}.budget-editor>.primary:disabled{opacity:.5;cursor:default}.budget-money{text-align:right}@media print{.budget-editor{display:none}}
+</style>
+
+
+
+</head>
+<body>
+<div class="shell">
+<header><div><div class="eyebrow">MY RETIREMENT PLAN</div><h1>내 속도로 준비하는 은퇴</h1><p class="subtitle">공개용 가상 예시로 시작합니다 · 본인 값은 이 브라우저에만 저장됩니다</p></div><div class="toolbar"><button id="toggleSettings" class="primary mobile-settings" aria-expanded="false">계산 설정 열기</button><button id="exportCsv">연도별 CSV</button><button id="saveConfig">기록 저장</button><button id="loadConfig" aria-controls="historyPanel" aria-expanded="false">저장 기록</button><button id="reset">초기화</button></div></header>
+<section id="historyPanel" class="panel history-panel hidden" aria-labelledby="historyHeading"><div class="history-head"><h2 id="historyHeading">저장한 계획 <span id="historyCount" class="small">0개</span></h2><button id="closeHistory" type="button">닫기</button></div><p class="help">현재 설정에 이름을 붙여 보관하고, 목록에서 다시 불러오세요. 연도별 추가 자산·안전자산·주식 투자 비율, 생활비 항목과 스트레스 테스트 가정도 함께 저장됩니다. 시뮬레이션 결과는 불러온 뒤 다시 실행하세요.</p><form id="historyForm" class="history-form"><div class="field"><label for="historyName">기록 이름</label><input id="historyName" type="text" maxlength="80" placeholder="예: 10년 뒤 은퇴 · 물가 3%" autocomplete="off" required></div><button type="submit" class="primary">현재 설정을 기록에 저장</button></form><div id="historyStatus" class="history-status" role="status" aria-live="polite"></div><div id="historyList" class="history-list"></div><div class="history-tools"><button id="downloadConfig" type="button">현재 설정 JSON 내보내기</button><button id="importConfig" type="button">JSON 파일 불러오기</button></div><p class="help">기록은 같은 브라우저의 이 파일 위치에 보관됩니다. 브라우저 데이터를 지우거나 파일 위치·브라우저를 바꾸면 목록이 유지되지 않을 수 있으므로, 필요한 기록은 JSON으로 백업하세요.</p></section>
+<div class="layout">
+<aside class="panel sidebar" aria-label="계산 설정">
+ <section class="section"><div class="section-title"><span class="step">01</span><h2>현재 자산</h2></div>
+ <div class="twocol"><div class="field"><label for="startYear">시작 연도</label><div class="inputbox"><input id="startYear" type="number" min="2020" max="2100" step="1"><span class="unit">년</span></div></div><div class="field"><label for="birthYear">출생 연도</label><div class="inputbox"><input id="birthYear" type="number" min="1900" max="2100" step="1"><span class="unit">년</span></div></div></div>
+ <div class="field"><label for="initialVti">보유 VTI 평가액</label><div class="inputbox"><input id="initialVti" type="number" min="0" max="10000000" step="100"><span class="unit">만원</span></div></div>
+ <div class="field"><label for="initialSchd">보유 SCHD 평가액</label><div class="inputbox"><input id="initialSchd" type="number" min="0" max="10000000" step="100"><span class="unit">만원</span></div></div>
+ <div class="field"><label for="initialCash">원화 현금·안전자산</label><div class="inputbox"><input id="initialCash" type="number" min="0" max="10000000" step="100"><span class="unit">만원</span></div></div>
+ <div class="field"><label for="deployCash">시작할 때 주식에 투자할 현금</label><div class="inputbox"><input id="deployCash" type="number" min="0" max="10000000" step="100"><span class="unit">만원</span></div><p class="help">보유 현금에서 이동합니다. 첫해 VTI·SCHD 비율을 적용하며 기존 VTI는 매도하지 않습니다.</p></div>
+ </section>
+ <section class="section"><div class="section-title"><span class="step">02</span><h2>저축과 은퇴 시점</h2></div>
+ <div class="field"><label for="annualSaving">첫해 연간 저축액</label><div class="inputbox"><input id="annualSaving" type="number" min="0" max="1000000" step="100"><span class="unit">만원</span></div></div>
+ <div class="field"><label for="savingGrowthMode">저축액의 매년 증가 방식</label><div class="inputbox"><select id="savingGrowthMode"><option value="percent">매년 일정 비율로 증가</option><option value="fixed">매년 일정 금액만큼 증가</option></select></div></div>
+ <div class="field"><label for="savingGrowth">저축액의 매년 증가분</label><div class="inputbox"><input id="savingGrowth" type="number" min="-100" max="1000000" step="0.5"><span class="unit" id="savingGrowthUnit">%</span></div></div>
+ <div class="field"><label for="safeSavingPct">새 저축의 안전자산 기본 비중</label><div class="inputbox"><input id="safeSavingPct" type="number" min="0" max="100" step="5"><span class="unit">%</span></div><p class="help">아래 연도별 표에서 따로 입력한 해에는 해당 비중이 우선 적용됩니다.</p></div>
+ <div class="field"><label for="retireYears">앞으로 저축하는 기간</label><div class="range-line"><input id="retireYears" type="range" min="0" max="30" step="1"><span class="range-value" id="retireYearsLabel">10년</span></div><p class="help" id="retireNote"></p></div>
+ <div class="twocol"><div class="field"><label for="horizon">은퇴 후 계산 기간</label><div class="inputbox"><input id="horizon" type="number" min="1" max="60" step="1"><span class="unit">년</span></div></div><div class="field"><label for="inflation">연 물가상승률</label><div class="inputbox"><input id="inflation" type="number" min="-5" max="20" step="0.5"><span class="unit">%</span></div></div></div>
+ </section>
+ <section class="section"><div class="section-title"><span class="step">03</span><h2>은퇴 후 생활비</h2></div>
+ <div class="field"><label for="withdrawMode">인출 방식</label><div class="inputbox"><select id="withdrawMode"><option value="extra">배당·이자 + 연간 추가 인출</option><option value="budget">목표 생활비 부족분만 인출</option></select></div></div>
+ <div class="field"><label for="annualWithdrawal">은퇴 첫해 추가 인출액</label><div class="inputbox"><input id="annualWithdrawal" type="number" min="0" max="1000000" step="100"><span class="unit">만원/년</span></div><p class="help">배당·이자와 별도로 꺼낼 연간 금액입니다. 매도 양도세는 차감하지 않습니다.</p></div>
+ <label class="checkline"><input id="inflateWithdrawal" type="checkbox">추가 인출액도 은퇴 후 물가만큼 증가</label>
+ <div class="field"><label for="withdrawSource">추가 인출 재원</label><div class="inputbox"><select id="withdrawSource"><option value="stocks">VTI·SCHD를 보유가치 비례 매도</option><option value="vtiFirst">VTI 우선, 부족하면 SCHD</option><option value="cashFirst">안전자산 우선, 부족하면 주식 매도</option></select></div></div>
+ <div class="field"><label for="monthlyBudget">현재 구매력 기준 목표 생활비</label><div class="inputbox"><input id="monthlyBudget" type="number" min="0" max="100000" step="0.1"><span class="unit">만원/월</span></div><p class="help">관리비와 건강보험료·비정기 지출까지 포함해 입력하세요. 은퇴 시점까지 물가를 반영합니다.</p></div>
+ <details class="budget-editor"><summary>생활비 항목으로 계산하기</summary><p class="help">현재 기준 금액을 만원 단위로 적으세요. 연간 비용은 12로 나누어 월평균에 합산합니다.</p><div id="budgetItemsList" class="budget-items"></div><div class="budget-tools"><button id="addBudgetItem" type="button">항목 추가</button><button id="addManagementFee" type="button">관리비 30만원 추가</button></div><div class="budget-total"><span>항목 합계</span><strong id="budgetMonthlyTotal">0만원 / 월</strong></div><button id="applyBudgetTotal" type="button" class="primary">합계를 목표 생활비로 반영</button><p id="budgetItemsNote" class="help"></p><p class="help">항목 목록도 기록·JSON에 저장됩니다. 목록 수정만으로 목표 생활비가 바뀌지는 않습니다.</p></details>
+ </section>
+ <section class="section"><details><summary>수익률·배당 가정 조절</summary>
+ <div class="twocol"><div class="field"><label for="vtiPriceGrowth">VTI 주가 상승률</label><div class="inputbox"><input id="vtiPriceGrowth" type="number" min="-50" max="50" step="0.5"><span class="unit">%</span></div></div><div class="field"><label for="schdPriceGrowth">SCHD 주가 상승률</label><div class="inputbox"><input id="schdPriceGrowth" type="number" min="-50" max="50" step="0.5"><span class="unit">%</span></div></div></div>
+ <div class="twocol"><div class="field"><label for="vtiYield">VTI 시작 배당률</label><div class="inputbox"><input id="vtiYield" type="number" min="0" max="30" step="0.01"><span class="unit">%</span></div></div><div class="field"><label for="schdYield">SCHD 시작 배당률</label><div class="inputbox"><input id="schdYield" type="number" min="0" max="30" step="0.01"><span class="unit">%</span></div></div></div>
+ <div class="twocol"><div class="field"><label for="vtiDividendGrowth">VTI 주당 배당 증가율</label><div class="inputbox"><input id="vtiDividendGrowth" type="number" min="-50" max="50" step="0.5"><span class="unit">%</span></div></div><div class="field"><label for="schdDividendGrowth">SCHD 주당 배당 증가율</label><div class="inputbox"><input id="schdDividendGrowth" type="number" min="-50" max="50" step="0.5"><span class="unit">%</span></div></div></div>
+ <div class="twocol"><div class="field"><label for="cashYield">안전자산 이자율</label><div class="inputbox"><input id="cashYield" type="number" min="0" max="20" step="0.1"><span class="unit">%</span></div></div><div class="field"><label for="dividendTax">미국 배당 원천징수</label><div class="inputbox"><input id="dividendTax" type="number" min="0" max="100" step="0.1"><span class="unit">%</span></div></div></div>
+ <div class="field"><label for="cashTax">안전자산 이자 세율</label><div class="inputbox"><input id="cashTax" type="number" min="0" max="100" step="0.1"><span class="unit">%</span></div></div>
+ <p class="help">주가 상승률은 배당을 제외한 수익률입니다. 주당 배당 증가율은 별도로 계산합니다. 기본 3%는 예측치가 아닌 비교용 가정입니다.</p>
+ </details></section>
+</aside>
+<main class="main">
+ <div class="topline"><span class="small" id="timelineLabel"></span><label class="switch"><input id="realTerms" type="checkbox">모든 결과를 현재 구매력으로 보기</label></div>
+ <div id="errorBox" class="warning error hidden" role="alert"></div><div id="warningBox" class="warning hidden" role="status"></div>
+ <section class="metrics" aria-label="은퇴 계획 요약"><div class="metric featured"><div class="metric-label">은퇴 시점 금융자산</div><div class="metric-value" id="retireAssets">—</div><div class="metric-foot" id="retireAssetsNote"></div></div><div class="metric"><div class="metric-label">은퇴 첫해 월 현금흐름</div><div class="metric-value" id="retireIncome">—</div><div class="metric-foot" id="retireIncomeNote"></div></div><div class="metric"><div class="metric-label">은퇴 10년 후 금융자산</div><div class="metric-value" id="afterTenAssets">—</div><div class="metric-foot" id="afterTenNote"></div></div></section>
+ <p class="model-scope">금융자산 통합 추정 · 계좌별 인출 제한·매도 세금 제외 · 기본 계산은 고정 수익률, 아래 스트레스 테스트는 변동 수익률</p>
+ <section class="panel chart-panel"><div class="active-rates" aria-label="현재 적용 중인 수익률 가정"><span id="activeVtiRates"></span><span id="activeSchdRates"></span><p class="help">고정 수익률 기본 계산의 가정입니다. 주가 상승률은 배당을 제외한 값이며, 배당률은 시작 시점 기준입니다.</p></div><div class="panel-head"><h2>시간에 따른 금융자산</h2><div class="legend"><span><i style="background:#176c60"></i>VTI</span><span><i style="background:#be8538"></i>SCHD</span><span><i style="background:#9aafa3"></i>원화 안전자산</span></div></div><svg id="assetChart" class="chart" viewBox="0 0 900 280" role="img" aria-label="연도별 금융자산 누적 영역 차트"></svg><div class="chart-note"><span id="chartBasis"></span><span>점선은 저축 종료 시점입니다.</span></div></section>
+ <div class="pair"><section class="panel compact"><h2>은퇴 첫해, 생활비 구성</h2><div class="stack" id="incomeStack"></div><div class="split-row"><span>VTI·SCHD 세후 배당</span><strong id="incomeDividend">—</strong></div><div class="split-row"><span>안전자산 세후 이자</span><strong id="incomeInterest">—</strong></div><div class="split-row"><span>추가 인출</span><strong id="incomeWithdrawal">—</strong></div><div class="split-row"><span>물가를 반영한 목표 생활비</span><strong id="incomeBudget">—</strong></div><div class="soft-note" id="incomeGap"></div></section><section class="panel compact"><h2>은퇴 시점 자산 구성</h2><div class="stack" id="assetStack"></div><div class="split-row"><span>VTI</span><strong id="splitVti">—</strong></div><div class="split-row"><span>SCHD</span><strong id="splitSchd">—</strong></div><div class="split-row"><span>원화 현금·안전자산</span><strong id="splitCash">—</strong></div><p class="help">신규 저축은 연도별 안전자산·주식 배분 비율을 따릅니다. 기존 보유분을 목표 비율로 자동 매매하지 않습니다.</p></section></div>
+ <section class="panel chart-panel"><div class="panel-head"><h2>은퇴 후 월 현금흐름</h2><div class="legend"><span><i style="background:#176c60"></i>세후 배당·이자</span><span><i style="background:#426a9c"></i>추가 인출 포함</span><span><i style="background:#b7aaa0"></i>목표 생활비</span></div></div><svg id="incomeChart" class="chart" viewBox="0 0 900 225" role="img" aria-label="은퇴 후 월평균 현금흐름과 목표 생활비 차트"></svg><p class="hint">월 금액은 연간 수령액 ÷ 12입니다. 두 ETF의 실제 배당은 분기별로 지급됩니다.</p></section>
+ <section class="panel stress-panel" aria-labelledby="stressHeading">
+ <div class="panel-head"><h2 id="stressHeading">하락장과 생활비 인출 스트레스 테스트</h2><span class="stress-label">수익률 순서 위험</span></div>
+ <p class="stress-intro">같은 장기 수익률이어도 은퇴 초반의 하락은 생활비 인출 부담을 키울 수 있습니다. 월별로 다른 주가 경로와 생활비 인출을 계산하고, 안전자산 보충 전략과 급락 시점을 비교합니다.</p>
+ <div class="stress-controls">
+ <div class="field"><label for="stressSpending">스트레스 테스트의 생활비 방식</label><div class="inputbox"><select id="stressSpending"><option value="budget">목표 생활비 부족분을 안전자산·매도로 충당</option><option value="plan">위 계획의 인출 방식 그대로 적용</option></select></div><p class="help">기본값은 배당·이자를 쓰고 모자란 생활비를 인출합니다. 위 기본 계산의 인출 방식과 별도로 적용합니다.</p></div>
+ <div class="field"><label for="stressScope">시장이 흔들리는 기간</label><div class="inputbox"><select id="stressScope"><option value="all">지금부터 저축·은퇴 전 기간</option><option value="retirement">은퇴 후만 · 은퇴 자산은 기본 계산과 동일</option></select></div></div>
+ </div>
+ <details class="stress-advanced"><summary>시장 변동·안전자산 보충 가정 조절</summary><div class="stress-controls">
+ <div class="field"><label for="stressBufferPolicy">그래프·상세에서 볼 보충 전략</label><div class="inputbox"><select id="stressBufferPolicy"><option value="none">주식 매도로 보충 안 함</option><option value="annual">매년 목표까지 보충</option><option value="conditional">회복 조건부 보충 + 최소 잔액</option></select></div><p class="help">세 전략을 같은 월별 시장 경로로 모두 비교합니다. 요약과 그래프는 여기서 선택한 전략입니다.</p></div>
+ <div class="field"><label for="stressStockSale">스트레스 테스트 주식 매도 순서</label><div class="inputbox"><select id="stressStockSale"><option value="proportional">VTI·SCHD 보유가치 비례</option><option value="vtiFirst">VTI 우선, 부족하면 SCHD</option></select></div><p class="help">생활비·보충 매도에 동일 적용합니다. 세 전략 모두 안전자산 우선 인출입니다.</p></div>
+ <div class="field"><label for="stressBufferYears">안전자산 목표 생활비 연수</label><div class="inputbox"><input id="stressBufferYears" type="number" min="0" max="10" step="0.5"><span class="unit">년</span></div></div>
+ <div class="field"><label for="stressBufferFloor">하락장에도 유지할 최소 연수</label><div class="inputbox"><input id="stressBufferFloor" type="number" min="0" max="10" step="0.5"><span class="unit">년</span></div></div>
+ <div class="field"><label for="stressRecoveryDrawdown">보충을 허용할 고점 대비 하락률</label><div class="inputbox"><input id="stressRecoveryDrawdown" type="number" min="0" max="100" step="5"><span class="unit">%</span></div><p class="help">기본 10%: 최근 1년 수익률이 0% 이상이고, 은퇴 이후 고점에서 10% 이내일 때 목표까지 보충합니다. 회복 전에는 최소 잔액까지만 보충합니다.</p></div>
+ <div class="field"><label for="stressVtiVol">VTI 연간 변동성</label><div class="inputbox"><input id="stressVtiVol" type="number" min="0" max="60" step="1"><span class="unit">%</span></div></div>
+ <div class="field"><label for="stressSchdVol">SCHD 연간 변동성</label><div class="inputbox"><input id="stressSchdVol" type="number" min="0" max="60" step="1"><span class="unit">%</span></div></div>
+ <div class="field"><label for="stressCorr">VTI·SCHD 로그수익률 상관계수</label><div class="inputbox"><input id="stressCorr" type="number" min="-100" max="100" step="5"><span class="unit">%</span></div><p class="help">100%면 두 ETF가 같은 방향의 충격을 받습니다. 기본 90%는 비교용 가정입니다.</p></div>
+ <div class="field"><label for="stressDividendCut">급락 시 배당 삭감 민감도</label><div class="inputbox"><input id="stressDividendCut" type="number" min="0" max="100" step="5"><span class="unit">%</span></div><p class="help">은퇴 후 연초 대비 20% 하락을 월말에 확인하면 다음 달부터 적용합니다. 관측 하락 −24%·민감도 25%라면 주당 배당 −6%입니다.</p></div>
+ <div class="field"><label for="stressCount">반복 경로 수</label><div class="inputbox"><input id="stressCount" type="number" min="100" max="5000" step="100"><span class="unit">회</span></div></div>
+ <div class="field"><label for="stressSeed">재현용 난수 번호</label><div class="inputbox"><input id="stressSeed" type="number" min="1" max="4294967295" step="1"></div><p class="help">같은 설정과 번호면 같은 결과입니다. 인출 재원을 바꿔 비교할 때 번호를 유지하세요.</p></div>
+ <div class="field"><label for="stressCrash">초반·후반 비교의 연간 급락률</label><div class="inputbox"><input id="stressCrash" type="number" min="0" max="90" step="5"><span class="unit">%</span></div><p class="help">두 ETF에 동일 적용합니다. 35%·2년이면 각각 −35%가 2년 이어져 주가가 누적 약 58% 하락합니다.</p></div>
+ <div class="field"><label for="stressCrashDuration">급락이 이어지는 기간</label><div class="inputbox"><input id="stressCrashDuration" type="number" min="1" max="60" step="1"><span class="unit">년</span></div><p class="help">은퇴 후 계산 기간보다 길면 계산 기간까지만 적용합니다. 그 외 연도는 기본 주가 상승률입니다.</p></div>
+ </div><p class="help">변동성 18%·16%, 상관 90%, 배당 민감도 25%는 실제 자료로 추정한 값이 아닌 조절 가능한 예시입니다. 주가 상승률·배당 증가율·저축·물가·인출 재원은 현재 계획의 설정을 사용합니다.</p></details>
+ <div class="stress-actions"><button id="runStress" class="primary">스트레스 테스트 실행</button><button id="rerollStress">난수 번호 바꿔 재실행</button><button id="exportStress" disabled>선택 경로 CSV</button></div>
+ <div id="stressStatus" class="stress-status" role="status" aria-live="polite">설정을 확인하고 실행하면 결과가 여기에 표시됩니다.</div><progress id="stressProgress" class="stress-progress hidden" max="100" value="0" aria-label="스트레스 테스트 진행률"></progress>
+ <div id="stressResults" class="hidden">
+ <div class="metrics" aria-label="스트레스 테스트 요약"><div class="metric"><div class="metric-label">모든 월의 목표 생활비를 충당한 경로</div><div class="metric-value" id="stressSupport">—</div><div class="metric-foot" id="stressSupportNote"></div></div><div class="metric"><div class="metric-label">요청 인출이 한 번이라도 미충당</div><div class="metric-value" id="stressFailure">—</div><div class="metric-foot" id="stressFailureNote"></div></div><div class="metric"><div class="metric-label">계산 마지막 해 자산 중앙값</div><div class="metric-value" id="stressMedian">—</div><div class="metric-foot" id="stressMedianNote"></div></div></div>
+ <div id="stressInterpretation" class="soft-note"></div>
+ <div class="panel-head"><h3>자산 범위와 선택한 경로</h3><div class="legend"><span><i style="background:#dae9e0"></i>10~90백분위</span><span><i style="background:#176c60"></i>중앙값</span><span><i style="background:#ac443a"></i>선택 경로</span></div></div><svg id="stressChart" class="chart" viewBox="0 0 900 280" role="img" aria-label="반복 시뮬레이션의 연도별 자산 10~90백분위 범위와 선택한 경로"></svg><p id="stressBasis" class="hint"></p>
+ <h3 style="margin-top:18px">같은 시장에서 안전자산 보충 전략 비교</h3><div class="scroll stress-table"><table><thead><tr><th>보충 전략</th><th>모든 월 생활비 충당</th><th>요청 인출 미충당</th><th>기말 자산 중앙값</th><th>기말 자산 10백분위</th><th>보충 매도 합계 중앙값<br>현재 가치 · 만원</th><th>고점 미회복 중 매도<br>합계 중앙값 · 현재 가치 만원</th></tr></thead><tbody id="bufferStrategyRows"></tbody></table></div><p class="help">기말 자산은 위 표시 기준을 따릅니다. 동일한 시장·초기 자산·추가 자산·생활비를 사용하며 보충 규칙만 바꿉니다. 단위는 만원입니다.</p>
+ <h3 style="margin-top:18px">급락 시점 비교</h3><div class="scroll stress-table"><table><thead><tr><th>경로</th><th>은퇴 시점 자산</th><th>마지막 해 자산</th><th>첫 생활비 부족</th><th>첫 요청 인출 미충당</th><th>최대 월 생활비 부족<br>현재 가치 · 만원</th></tr></thead><tbody id="stressCases"></tbody></table></div><p id="stressScenarioNote" class="help"></p>
+ <div class="stress-trace"><label for="stressTrace">상세히 볼 경로</label><select id="stressTrace"><option value="early">은퇴 초반 급락</option><option value="late">은퇴 후반 급락</option><option value="worst">반복 경로 중 기말 자산 최저</option><option value="flat">일정 수익률 기준선</option></select></div>
+ <div class="panel-head"><h3>선택 경로의 안전자산 잔액</h3><div class="legend"><span><i style="background:#176c60"></i>기말 잔액</span><span><i style="background:#426a9c"></i>목표</span><span><i style="background:#be8538"></i>최소</span></div></div><svg id="bufferCashChart" class="chart" viewBox="0 0 900 225" role="img" aria-label="선택 경로의 연도별 안전자산 잔액과 목표·최소 잔액"></svg><p id="bufferTraceNote" class="help"></p><p class="help">목표·최소 잔액은 다음 1년 예상 생활비 × 설정 연수입니다. 잔여 개월 수는 배당을 차감하지 않은 다음 달 전체 생활비 기준입니다. 보충 없음 전략에서는 목표·최소선이 참고선입니다.</p>
+ <div class="scroll"><table><thead><tr><th>연도 / 은퇴 연차</th><th>VTI 주가 수익률</th><th>SCHD 주가 수익률</th><th>월 배당·이자</th><th>생활비용 연 주식 매도</th><th>연 안전자산 인출</th><th>연 보충 매도</th><th>기말 안전자산</th><th>잔여 생활비<br>개월</th><th>기말 자산</th><th>월 현금흐름</th><th>월 현금흐름<br>현재 가치</th><th>가장 부족했던 월<br>부족액 · 현재 가치</th></tr></thead><tbody id="stressTraceRows"></tbody></table></div><p class="help">금액 단위는 만원이며 현재 가치 열은 항상 시작 연도 구매력 기준입니다. 인출·매도는 연간 합계, 월 현금흐름은 월별 계산의 연간 평균입니다. 실제 부족 여부는 각 월에 판정하며 마지막 열은 가장 부족했던 한 달의 금액입니다. 보충 매도는 생활비 현금흐름에 포함하지 않습니다.</p>
+ </div>
+ <details class="stress-method"><summary>시뮬레이션 계산 방식과 한계</summary>
+ <p>저축 기간은 기존 연간 계산, 은퇴 후는 월 단위로 계산합니다. 월간 로그수익률 = ln(1 + 설정 연간 주가 상승률) ÷ 12 + 연간 변동성 ÷ √12 × 상관된 정규 난수. 설정 주가 상승률은 배당을 제외한 연복리 중심값입니다. 매월 독립 충격이며 실제 역사적 백테스트가 아닙니다.</p>
+ <p>은퇴 후 매월 기초 수량의 주당 배당 연율 ÷ 12와 기초 안전자산의 이자를 계산하고, 해당 월 주가 변동 후 생활비 부족분을 안전자산에서 먼저 인출합니다. 부족하면 주식을 매도합니다. 주당 배당은 월별로 성장시키며, 실제 분기 지급일 대신 매월 균등 지급을 가정합니다. 월중의 일별 가격 변동과 환율·물가 충격은 반영하지 않습니다.</p>
+ <p>은퇴 후 연초 대비 주가가 20% 이상 하락한 것이 월말에 확인되면, 그때까지의 하락률 × 민감도만큼 다음 월부터 주당 배당을 삭감합니다. ETF별 연 1회 적용하며 낮아진 배당 수준에서 이후 성장합니다. 저축 기간은 기존 연간 배당 삭감 근사를 사용합니다. 실제 배당 반응을 예측하는 규칙이 아닙니다.</p>
+ <p>세 전략은 같은 월별 경로를 공유합니다. 보충 없음은 생활비 초과 배당·이자만 남깁니다. 매년 보충은 연말에 목표까지, 회복 조건부는 최근 1년 가격지수가 0% 이상 상승하고 고점 대비 허용 범위 안이면 목표까지 보충합니다. 그렇지 않으면 최소 잔액까지만 보충합니다. 주식 부족 시 가능한 만큼만 보충하고 빚을 만들지 않습니다. 계산 마지막 연말에는 이후 생활비가 없으므로 보충하지 않습니다.</p>
+ <p>시장 회복은 은퇴 시작 시 주식 비중으로 고정한 VTI·SCHD 가격지수로 측정하며, 인출·추가 입금·보충 매도와 독립적입니다. 고점은 은퇴 이후 관측 월말의 최고치입니다. ‘고점 미회복 중 매도’에는 이 지수가 고점 아래일 때 발생한 생활비 매도와 보충 매도를 포함합니다. 모든 보충 판단은 그 시점까지 확인된 정보만 사용합니다.</p>
+ <p>목표·최소 안전자산은 배당을 차감하지 않은 다음 1년의 물가 반영 생활비 × 설정 연수입니다. 비정기 추가 자산은 해당 연말 세후 명목 수령액으로, 그해 생활비 계산 후 그해 배분 비율로 투자하고 보충 판단 전에 반영합니다. 이전 월의 부족을 소급해 메우지 않습니다.</p>
+ <p>생활비 충당은 은퇴한 모든 월의 현금흐름이 목표 생활비 이상인 경우입니다. 인출 미충당과 자산 소진도 월 중 발생을 집계합니다. 연간 평균 현금흐름이 충분해도 특정 월에 모자랐다면 충당 실패로 판정합니다. 백분위는 각 연도별 분포이며 하나의 실제 경로가 아닙니다.</p>
+ <p>기본 목표 3년·최소 1년·고점 대비 10%는 조절 가능한 비교용 가정입니다. 장기 침체의 군집·극단적 꼬리위험, 매도 세금·거래비용, 계좌별 인출 제한, 추가 근로소득·연금 수령은 반영하지 않습니다. 표시 비율은 모형 안의 경로 비중이며 실제 은퇴 성공 확률이 아닙니다.</p>
+ <p>개념 참고: <a href="https://www.schwab.com/learn/story/timing-matters-understanding-sequence-returns-risk" target="_blank" rel="noreferrer">Schwab 수익률 순서 위험</a>, <a href="https://www.schwab.com/learn/story/how-to-create-retirement-paycheck" target="_blank" rel="noreferrer">은퇴 생활비와 현금 완충재</a>.</p></details>
+ </section>
+ <section class="panel schedule-panel"><div class="detail-head"><div><h2>연도별 신규 투자 비율</h2><p class="help">그해 저축과 추가 자산에서 안전자산을 먼저 배분하고, 남은 주식 자금을 VTI·SCHD로 나눕니다. 은퇴 직전 해의 안전자산 비중을 높일 수 있습니다.</p></div></div>
+ <div class="schedule-tools"><label for="bulkRatio" class="small">주식 내 비율</label><select id="bulkRatio"><option value="100">VTI 100 : SCHD 0</option><option value="80" selected>VTI 80 : SCHD 20</option><option value="70">VTI 70 : SCHD 30</option><option value="50">VTI 50 : SCHD 50</option></select><label for="bulkSafeRatio" class="small">안전자산 %</label><input id="bulkSafeRatio" class="allocation-input" type="number" min="0" max="100" step="5" value="20"><button id="applyRatio">두 비율을 모든 연도에 적용</button></div>
+ <div class="scroll" id="allocationWrap"><table><thead><tr><th>투자 연도</th><th>연간 저축<br>만원</th><th>추가 자산 · 연말 수령<br>세후 만원</th><th>안전자산<br>% · 공란은 기본값</th><th>주식 내 VTI<br>%</th><th>주식 내 SCHD<br>%</th><th>전체 배분 비율<br>VTI / SCHD / 안전자산 %</th><th>신규 투자금<br>저축 + 추가 자산 · VTI / SCHD / 안전자산 만원</th></tr></thead><tbody id="allocationRows"></tbody></table></div><p class="help" id="allocationNote"></p><p class="help">예: 안전자산 40%, 주식 내 VTI 80% → 신규 자금의 VTI 48% · SCHD 12% · 안전자산 40%. 저축과 추가 자산의 배분이며 기존 주식을 안전자산으로 매도·전환하지 않습니다.</p></section>
+ <section class="panel schedule-panel"><div class="detail-head"><h2>연도별 계산 내역</h2><span class="small" id="tableUnit">단위: 만원</span></div><div class="scroll"><table><thead><tr><th>연도 / 나이</th><th>단계</th><th>저축액</th><th>연말 추가 자산</th><th>세후 배당</th><th>세후 이자</th><th>추가 인출</th><th>미충당 인출</th><th>기말 VTI</th><th>기말 SCHD</th><th>기말 안전자산</th><th>기말 합계</th><th>월 현금흐름</th><th>현재 가치 기준</th></tr></thead><tbody id="projectionRows"></tbody></table></div><p class="help">저축은 연말 납입합니다. 저축 중 배당·이자는 재투자하고, 은퇴 후 배당·이자는 생활비로 사용합니다. 추가 인출은 기말에 반영합니다. ‘현재 가치 기준’은 표시 설정과 관계없이 월 현금흐름을 시작 연도의 구매력으로 환산합니다.</p></section>
+ <section class="panel method"><details><summary>계산 방식과 출처</summary><div class="method-grid"><div><p><strong>계산 순서</strong></p><p>기초 보유 수량으로 배당을 계산하고, 연간 주가 상승을 반영합니다. 저축 기간에는 각 ETF의 세후 배당을 같은 ETF에 재투자하고, 세후 이자는 안전자산에 남깁니다. 신규 저축을 연말에 그해 안전자산 비중과 주식 내 VTI·SCHD 비율로 배분한 뒤 기말 잔액을 계산합니다.</p><p>은퇴 후에는 배당·이자를 생활비로 쓰며 재투자하지 않습니다. 추가 인출 시 선택한 재원에서 차감합니다. 목표 생활비 방식에서는 남는 배당·이자를 안전자산으로 보관합니다.</p><div class="formula">총 배당 = 보유 수량 × 주당 배당금<br>다음 해 주당 배당금 = 올해 주당 배당금 × (1 + 배당 증가율)<br>현재 구매력 = 해당 연도 금액 ÷ (1 + 물가상승률)^경과연수</div><p>연도별 비율 변경은 신규 저축·연말 추가 자산에 적용하며, 최초 현금 투자에는 주식 내 비율만 적용합니다. 은퇴 중 주식 매도는 선택한 재원 방식을 따릅니다. VTI 우선 방식은 VTI를 먼저 매도하고 부족한 금액만 SCHD에서 차감하며, 원화 안전자산은 사용하지 않습니다. 배당 수령과 매도 대금은 중복 계산하지 않습니다.</p></div><div><p><strong>기준 자료 · 2026년 10월 30일 작성</strong></p><p>VTI 시작 배당수익률 1.05%: <a href="https://advisors.vanguard.com/investments/products/vti/vanguard-total-stock-market-etf" target="_blank" rel="noreferrer">Vanguard 공식 안내</a>, 2026년 8월 말 기준.</p><p>SCHD 시작 분배수익률 3.24%: <a href="https://www.schwabassetmanagement.com/products/schd" target="_blank" rel="noreferrer">Schwab 공식 안내</a>, 2026년 9월 말 기준.</p><p>미국 배당 원천징수 기본값 15%: <a href="https://www.nabo.go.kr/board/file/down.do?fid=33319156" target="_blank" rel="noreferrer">국회예산정책처 2026 대한민국 조세</a>.</p><p>주가·배당 증가율, 물가, 안전자산 이자율은 사용자가 바꾸는 가정입니다. 기본 계산은 매년 일정한 수익률을 적용합니다. 별도의 스트레스 테스트에서 변동 수익률과 하락장 인출을 계산합니다. 미래 배당은 보장되지 않습니다.</p><p><strong>계산 범위:</strong> 일반계좌·ISA·연금저축을 합친 자산 추정입니다. 계좌별 인출 가능 시기, ISA 납입한도, 양도소득세, 종합소득세, 건강보험료, 거래·환전 비용, 환율 변동은 반영하지 않습니다.</p></div></div></details></section>
+ <footer><span>단독 HTML 파일 · 외부 라이브러리 없이 작동 · 입력은 이 브라우저에 자동 저장</span><span id="saveStatus" class="status" aria-live="polite"></span><button class="preset-link" id="retireExample">가상 은퇴 예시 불러오기</button></footer>
+</main></div></div><input id="configFile" class="file-input" type="file" accept=".json,application/json">
+<script id="calculation-engine">
+'use strict';
+const DEFAULTS={startYear:2026,birthYear:1990,initialVti:0,initialSchd:0,initialCash:0,deployCash:0,annualSaving:1200,savingGrowthMode:'percent',savingGrowth:0,safeSavingPct:20,retireYears:10,horizon:40,inflation:2,annualWithdrawal:0,inflateWithdrawal:false,withdrawMode:'budget',withdrawSource:'stocks',monthlyBudget:200,vtiPriceGrowth:3,schdPriceGrowth:3,vtiYield:1.05,schdYield:3.24,vtiDividendGrowth:3,schdDividendGrowth:3,cashYield:2.5,dividendTax:15,cashTax:15.4,realTerms:false,allocations:Array(30).fill(80),stressCount:1000,stressSeed:42,stressVtiVol:18,stressSchdVol:16,stressCorr:90,stressDividendCut:25,stressScope:'all',stressSpending:'budget',stressCrash:35,stressCrashDuration:2};
+DEFAULTS.safeAllocations=Array(30).fill(null);
+DEFAULTS.budgetItems=[];
+DEFAULTS.allocations=Array(90).fill(80);
+DEFAULTS.safeAllocations=Array(90).fill(null);
+DEFAULTS.extraAssets=Array(90).fill(0);
+Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,stressBufferFloor:1,stressRecoveryDrawdown:10,stressStockSale:'proportional'});
+function normalizeConfig(incoming){
+ const c={...structuredClone(DEFAULTS),...structuredClone(incoming)};
+ for(const [key,fallback] of [['allocations',80],['safeAllocations',null],['extraAssets',0]])if(Array.isArray(c[key])&&c[key].length>=30&&c[key].length<=90){const old=c[key];c[key]=Array.from({length:90},(_,i)=>i<old.length?old[i]:key==='allocations'?(old[old.length-1]??fallback):fallback);}
+ return c;
+}
+function contributionFor(c,index){return Math.max(0,c.savingGrowthMode==='fixed'?c.annualSaving+c.savingGrowth*index:c.annualSaving*Math.pow(1+c.savingGrowth/100,index));}
+function safePctFor(c,index){return c.safeAllocations?.[index]??c.safeSavingPct;}
+function stockPctFor(c,index){return c.allocations[index]??c.allocations[c.allocations.length-1];}
+function monthlyBudgetTotal(items){return items.reduce((sum,item)=>sum+item.amount/(item.frequency==='annual'?12:1),0);}
+function validateConfig(c){
+ const finiteKeys=['startYear','birthYear','initialVti','initialSchd','initialCash','deployCash','annualSaving','savingGrowth','safeSavingPct','retireYears','horizon','inflation','annualWithdrawal','monthlyBudget','vtiPriceGrowth','schdPriceGrowth','vtiYield','schdYield','vtiDividendGrowth','schdDividendGrowth','cashYield','dividendTax','cashTax'];
+ for(const k of finiteKeys)if(!Number.isFinite(c[k]))return '모든 숫자 입력란을 채워 주세요.';
+ if(c.initialVti<0||c.initialSchd<0||c.initialCash<0||c.deployCash<0||c.annualSaving<0||c.annualWithdrawal<0||c.monthlyBudget<0)return '자산·저축액·인출액에는 0 이상의 금액을 입력하세요.';
+ if(c.deployCash>c.initialCash)return '처음 투자할 현금이 현재 보유 현금보다 큽니다.';
+ if(c.retireYears<0||c.retireYears>30||!Number.isInteger(c.retireYears)||c.horizon<1||c.horizon>60||!Number.isInteger(c.horizon))return '저축 기간은 0~30년, 은퇴 후 기간은 1~60년의 정수로 입력하세요.';
+ if(c.startYear<2020||c.startYear>2100||!Number.isInteger(c.startYear)||!Number.isInteger(c.birthYear)||c.birthYear<1900||c.birthYear>c.startYear)return '시작 연도와 출생 연도를 확인하세요.';
+ if(c.safeSavingPct<0||c.safeSavingPct>100||c.dividendTax<0||c.dividendTax>100||c.cashTax<0||c.cashTax>100)return '비중과 세율은 0~100% 범위로 입력하세요.';
+ if(c.inflation < -5 || c.inflation>20)return '물가상승률은 -5~20% 범위로 입력하세요.';
+ for(const k of ['vtiPriceGrowth','schdPriceGrowth','vtiDividendGrowth','schdDividendGrowth'])if(c[k]<-50||c[k]>50)return '주가·배당 증가율은 -50~50% 범위로 입력하세요.';
+ for(const k of ['vtiYield','schdYield','cashYield'])if(c[k]<0||c[k]>30)return '배당·이자율은 0~30% 범위로 입력하세요.';
+ if(!['percent','fixed'].includes(c.savingGrowthMode)||!['extra','budget'].includes(c.withdrawMode)||!['stocks','vtiFirst','cashFirst'].includes(c.withdrawSource))return '선택한 계산 방식을 확인하세요.';
+ if(c.savingGrowthMode==='percent'&&(c.savingGrowth<-100||c.savingGrowth>100))return '저축액 증가율은 -100~100% 범위로 입력하세요.';
+ if(!Array.isArray(c.allocations)||(c.allocations.length<30||c.allocations.length>90)||c.allocations.some(v=>!Number.isFinite(v)||v<0||v>100))return '연도별 VTI 비율은 0~100% 범위로 입력하세요.';
+ if(c.safeAllocations!==undefined&&(!Array.isArray(c.safeAllocations)||(c.safeAllocations.length<30||c.safeAllocations.length>90)||c.safeAllocations.some(v=>v!==null&&(!Number.isFinite(v)||v<0||v>100))))return '연도별 안전자산 비율은 0~100% 범위로 입력하세요.';
+ if(c.budgetItems!==undefined&&(!Array.isArray(c.budgetItems)||c.budgetItems.length>100||c.budgetItems.some(item=>!item||typeof item.name!=='string'||item.name.length>80||!Number.isFinite(item.amount)||item.amount<0||item.amount>100000||!['monthly','annual'].includes(item.frequency))))return '생활비 항목은 100개 이하, 금액은 0~100,000만원 범위로 입력하세요.';
+ if(c.extraAssets!==undefined&&(!Array.isArray(c.extraAssets)||(c.extraAssets.length<30||c.extraAssets.length>90)||c.extraAssets.some(v=>!Number.isFinite(v)||v<0||v>10000000)))return '연도별 추가 자산은 0~10,000,000만원 범위로 입력하세요.';
+ return validateStress(c);
+}
+function validateStress(c){
+ const ranges={stressCount:[100,5000],stressSeed:[1,4294967295],stressVtiVol:[0,60],stressSchdVol:[0,60],stressCorr:[-100,100],stressDividendCut:[0,100],stressCrash:[0,90],stressCrashDuration:[1,60]};
+ for(const [key,[low,high]] of Object.entries(ranges)){if(!Number.isFinite(c[key])||c[key]<low||c[key]>high)return '스트레스 테스트의 반복 횟수·변동성·급락 설정 범위를 확인하세요.';}
+ if(![c.stressCount,c.stressSeed,c.stressCrashDuration].every(Number.isInteger))return '반복 횟수·난수 번호·급락 기간은 정수로 입력하세요.';
+ if(!['all','retirement'].includes(c.stressScope)||!['budget','plan'].includes(c.stressSpending))return '스트레스 테스트의 적용 기간과 생활비 방식을 확인하세요.';
+ for(const key of ['stressBufferYears','stressBufferFloor','stressRecoveryDrawdown'])if(!Number.isFinite(c[key]))return '안전자산 보충 설정을 확인하세요.';
+ if(c.stressBufferYears<0||c.stressBufferYears>10||c.stressBufferFloor<0||c.stressBufferFloor>c.stressBufferYears||c.stressRecoveryDrawdown<0||c.stressRecoveryDrawdown>100)return '안전자산 목표는 0~10년, 최소 잔액은 목표 이하, 회복 허용 하락률은 0~100%로 입력하세요.';
+ if(!['none','annual','conditional'].includes(c.stressBufferPolicy)||!['proportional','vtiFirst'].includes(c.stressStockSale))return '안전자산 보충 전략과 주식 매도 순서를 확인하세요.';
+ return '';
+}
+function simulate(c,marketPath=[]){
+ const validation=validateConfig(c);if(validation)throw new Error(validation);
+ const rows=[];const alloc0=c.allocations[0]/100;
+ let vShares=c.initialVti+c.deployCash*alloc0,sShares=c.initialSchd+c.deployCash*(1-alloc0),cash=c.initialCash-c.deployCash;
+ let vp=1,sp=1,vd=c.vtiYield/100,sd=c.schdYield/100;
+ const valuation=(elapsed)=>({elapsed,year:c.startYear+elapsed,age:c.startYear+elapsed-c.birthYear,vti:vShares*vp,schd:sShares*sp,cash,total:vShares*vp+sShares*sp+cash,deflator:Math.pow(1+c.inflation/100,elapsed)});
+ rows.push({...valuation(0),working:c.retireYears>0,saving:0,vtiContribution:0,schdContribution:0,safeContribution:0,netDividend:0,netInterest:0,grossDividend:0,withdrawal:0,stockSold:0,cashUsed:0,requestedWithdrawal:0,unfunded:0,income:0,budget:c.monthlyBudget*12});
+ for(let t=1;t<=c.retireYears+c.horizon;t++){
+  const working=t<=c.retireYears;
+  const market=marketPath[t-1]||{},vReturn=market.vtiReturn??c.vtiPriceGrowth/100,sReturn=market.schdReturn??c.schdPriceGrowth/100,vFactor=market.vtiDividendFactor??1,sFactor=market.schdDividendFactor??1;
+  if(![vReturn,sReturn,vFactor,sFactor].every(Number.isFinite)||vReturn<=-1||sReturn<=-1||vFactor<0||vFactor>1||sFactor<0||sFactor>1)throw new Error('시장 경로의 수익률 또는 배당 삭감 값을 확인하세요.');
+  vd*=vFactor;sd*=sFactor;
+  const grossDividend=vShares*vd+sShares*sd,netDividend=grossDividend*(1-c.dividendTax/100),netInterest=cash*c.cashYield/100*(1-c.cashTax/100);
+  vp*=1+vReturn;sp*=1+sReturn;
+  let saving=0,vtiContribution=0,schdContribution=0,safeContribution=0,requestedWithdrawal=0,withdrawal=0,stockSold=0,cashUsed=0,unfunded=0,income=0;
+  const budget=c.monthlyBudget*12*Math.pow(1+c.inflation/100,t);
+  if(working){
+   // Each ETF reinvests its own dividend; cash interest stays in cash.
+   vShares+=(vShares*vd*(1-c.dividendTax/100))/vp;
+   sShares+=(sShares*sd*(1-c.dividendTax/100))/sp;
+   cash+=netInterest;
+   saving=contributionFor(c,t-1);safeContribution=saving*safePctFor(c,t-1)/100;
+   const ratio=stockPctFor(c,t-1)/100;
+   vtiContribution=(saving-safeContribution)*ratio;schdContribution=saving-safeContribution-vtiContribution;
+   vShares+=vtiContribution/vp;sShares+=schdContribution/sp;cash+=safeContribution;
+  }else{
+   const naturalIncome=netDividend+netInterest;
+   requestedWithdrawal=c.withdrawMode==='budget'?Math.max(0,budget-naturalIncome):c.annualWithdrawal*(c.inflateWithdrawal?Math.pow(1+c.inflation/100,t-c.retireYears-1):1);
+   let needed=requestedWithdrawal;
+   if(c.withdrawSource==='cashFirst'){cashUsed=Math.min(cash,needed);cash-=cashUsed;needed-=cashUsed;}
+   if(c.withdrawSource==='vtiFirst'){
+    const vtiSold=Math.min(vShares*vp,needed);
+    vShares=Math.max(0,vShares-vtiSold/vp);
+    const schdSold=Math.min(sShares*sp,Math.max(0,needed-vtiSold));
+    sShares=Math.max(0,sShares-schdSold/sp);
+    stockSold=vtiSold+schdSold;
+   }else{
+    const stocks=vShares*vp+sShares*sp;
+    stockSold=Math.min(stocks,needed);
+    const keep=stocks>0?Math.max(0,1-stockSold/stocks):1;
+    vShares*=keep;sShares*=keep;
+   }
+   withdrawal=cashUsed+stockSold;unfunded=Math.max(0,requestedWithdrawal-withdrawal);
+   income=c.withdrawMode==='budget'?Math.min(naturalIncome,budget)+withdrawal:naturalIncome+withdrawal;
+   if(c.withdrawMode==='budget')cash+=Math.max(0,naturalIncome-budget);
+  }
+  const extraAsset=c.extraAssets?.[t-1]??0,extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
+  cash+=extraSafe;vShares+=extraVti/vp;sShares+=(extraAsset-extraSafe-extraVti)/sp;
+  rows.push({...valuation(t),working,saving,extraAsset,vtiContribution,schdContribution,safeContribution,netDividend,netInterest,grossDividend,withdrawal,stockSold,cashUsed,requestedWithdrawal,unfunded,income,budget,vtiReturn:vReturn,schdReturn:sReturn,vtiDividendFactor:vFactor,schdDividendFactor:sFactor});
+  vd*=1+c.vtiDividendGrowth/100;sd*=1+c.schdDividendGrowth/100;
+ }
+ return rows;
+}
+const BUFFER_POLICIES={none:'주식 매도로 보충 안 함',annual:'매년 목표까지 보충',conditional:'회복 조건부 보충 + 최소 잔액'};
+function monthlyMarketPath(c,random){
+ const result=[],rho=c.stressCorr/100,correlation=Math.sqrt(Math.max(0,1-rho*rho));
+ for(let t=1;t<=c.retireYears+c.horizon;t++){
+  const months=[];let vg=1,sg=1;
+  for(let m=0;m<12;m++){
+   const radius=Math.sqrt(-2*Math.log(random())),angle=2*Math.PI*random(),z=radius*Math.cos(angle),other=rho*z+correlation*radius*Math.sin(angle),active=c.stressScope==='all'||t>c.retireYears;
+   const v=Math.expm1(Math.log1p(c.vtiPriceGrowth/100)/12+(active?c.stressVtiVol/100/Math.sqrt(12)*z:0)),s=Math.expm1(Math.log1p(c.schdPriceGrowth/100)/12+(active?c.stressSchdVol/100/Math.sqrt(12)*other:0));
+   months.push({vtiReturn:v,schdReturn:s});vg*=1+v;sg*=1+s;
+  }
+  const annual=stressShock(vg-1,sg-1,c);result.push({...annual,months});
+ }
+ return result;
+}
+function futureYearBudget(c,elapsed){let sum=0;for(let m=1;m<=12;m++)sum+=c.monthlyBudget*Math.pow(1+c.inflation/100,elapsed+m/12);return sum;}
+function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
+ const validation=validateConfig(c);if(validation)throw new Error(validation);
+ const rows=simulate({...c,horizon:1},marketPath).slice(0,c.retireYears+1);
+ let vp=1,sp=1,vd=c.vtiYield/100,sd=c.schdYield/100;
+ for(let i=0;i<c.retireYears;i++){const p=marketPath[i]||{};vp*=1+(p.vtiReturn??c.vtiPriceGrowth/100);sp*=1+(p.schdReturn??c.schdPriceGrowth/100);vd*=(p.vtiDividendFactor??1)*(1+c.vtiDividendGrowth/100);sd*=(p.schdDividendFactor??1)*(1+c.schdDividendGrowth/100);}
+ const ret=rows[rows.length-1],referenceV=vp,referenceS=sp,stockWeight=ret.vti+ret.schd>0?ret.vti/(ret.vti+ret.schd):stockPctFor(c,0)/100;
+ let vShares=ret.vti/vp,sShares=ret.schd/sp,cash=ret.cash,peakIndex=1;
+ const indexValue=()=>stockWeight*vp/referenceV+(1-stockWeight)*sp/referenceS;
+ const sell=(needed)=>{
+  const v=vShares*vp,s=sShares*sp;
+  if(c.stressStockSale==='vtiFirst'){const a=Math.min(v,needed),b=Math.min(s,Math.max(0,needed-a));vShares=Math.max(0,vShares-a/vp);sShares=Math.max(0,sShares-b/sp);return a+b;}
+  const sold=Math.min(v+s,needed),keep=v+s>0?Math.max(0,1-sold/(v+s)):1;vShares*=keep;sShares*=keep;return sold;
+ };
+ for(let t=c.retireYears+1;t<=c.retireYears+c.horizon;t++){
+  const p=marketPath[t-1]||{},annualV=p.vtiReturn??c.vtiPriceGrowth/100,annualS=p.schdReturn??c.schdPriceGrowth/100;
+  const months=p.months||Array.from({length:12},()=>({vtiReturn:Math.expm1(Math.log1p(annualV)/12),schdReturn:Math.expm1(Math.log1p(annualS)/12)}));
+  if(months.length!==12)throw new Error('월별 시장 경로는 매년 12개여야 합니다.');
+  let netDividend=0,grossDividend=0,netInterest=0,requestedWithdrawal=0,withdrawal=0,stockSold=0,cashUsed=0,unfunded=0,income=0,budget=0,livingGap=0,maxMonthlyGapReal=0,firstGapMonth=null,firstUnfundedMonth=null,refillSold=0,downMarketSold=0,minCashMonths=Infinity;
+  let cutV=false,cutS=false,hadEmpty=false,ytdV=1,ytdS=1,realIncome=0,realBudget=0,realNaturalIncome=0,realGap=0;const yearStartIndex=indexValue();
+  for(let m=1;m<=12;m++){
+   const mr=months[m-1];if(![mr.vtiReturn,mr.schdReturn].every(r=>Number.isFinite(r)&&r>-1))throw new Error('월별 주가 수익률을 확인하세요.');
+   const elapsed=t-1+m/12,deflator=Math.pow(1+c.inflation/100,elapsed),monthlyBudget=c.monthlyBudget*deflator,gross=(vShares*vd+sShares*sd)/12,dividend=gross*(1-c.dividendTax/100),interest=cash*c.cashYield/100/12*(1-c.cashTax/100);
+   vp*=1+mr.vtiReturn;sp*=1+mr.schdReturn;ytdV*=1+mr.vtiReturn;ytdS*=1+mr.schdReturn;peakIndex=Math.max(peakIndex,indexValue());
+   const natural=dividend+interest,request=c.withdrawMode==='budget'?Math.max(0,monthlyBudget-natural):c.annualWithdrawal/12*(c.inflateWithdrawal?Math.pow(1+c.inflation/100,t-c.retireYears-1+(m-1)/12):1);
+   const fromCash=Math.min(cash,request);cash-=fromCash;const fromStock=sell(Math.max(0,request-fromCash)),missing=Math.max(0,request-fromCash-fromStock),paid=(c.withdrawMode==='budget'?Math.min(natural,monthlyBudget):natural)+fromCash+fromStock,gap=Math.max(0,monthlyBudget-paid);
+   if(c.withdrawMode==='budget')cash+=Math.max(0,natural-monthlyBudget);
+   if(indexValue()<peakIndex*(1-1e-8))downMarketSold+=fromStock;
+   if(gap>.00001&&firstGapMonth===null)firstGapMonth=m;if(missing>.00001&&firstUnfundedMonth===null)firstUnfundedMonth=m;
+   netDividend+=dividend;grossDividend+=gross;netInterest+=interest;requestedWithdrawal+=request;withdrawal+=fromCash+fromStock;stockSold+=fromStock;cashUsed+=fromCash;unfunded+=missing;income+=paid;budget+=monthlyBudget;livingGap+=gap;maxMonthlyGapReal=Math.max(maxMonthlyGapReal,gap/deflator);
+   realIncome+=paid/deflator;realBudget+=monthlyBudget/deflator;realNaturalIncome+=natural/deflator;realGap+=gap/deflator;
+   minCashMonths=Math.min(minCashMonths,monthlyBudget>0?cash/monthlyBudget:Infinity);
+   if(cash+vShares*vp+sShares*sp<.00001)hadEmpty=true;
+   // A cut uses only the decline observed by this month-end and affects future payments.
+   if(!cutV&&ytdV<=.8+1e-12){vd*=Math.max(0,1+(ytdV-1)*c.stressDividendCut/100);cutV=true;}
+   if(!cutS&&ytdS<=.8+1e-12){sd*=Math.max(0,1+(ytdS-1)*c.stressDividendCut/100);cutS=true;}
+   vd*=Math.pow(1+c.vtiDividendGrowth/100,1/12);sd*=Math.pow(1+c.schdDividendGrowth/100,1/12);
+  }
+  // Net one-off receipts arrive at year-end, never funding an earlier month's shortfall.
+  const extraAsset=c.extraAssets?.[t-1]??0,extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
+  cash+=extraSafe;vShares+=extraVti/vp;sShares+=(extraAsset-extraSafe-extraVti)/sp;
+  const nextBudget=futureYearBudget(c,t),cashTarget=nextBudget*c.stressBufferYears,cashFloor=nextBudget*c.stressBufferFloor,healthy=indexValue()>=yearStartIndex*(1-1e-10)&&indexValue()>=peakIndex*(1-c.stressRecoveryDrawdown/100)*(1-1e-10);
+  const replenishTo=policy==='annual'?cashTarget:policy==='conditional'?(healthy?cashTarget:cashFloor):0;
+  if(t<c.retireYears+c.horizon&&cash<replenishTo){refillSold=sell(replenishTo-cash);cash+=refillSold;if(indexValue()<peakIndex*(1-1e-8))downMarketSold+=refillSold;}
+  const deflator=Math.pow(1+c.inflation/100,t),nextMonthly=c.monthlyBudget*Math.pow(1+c.inflation/100,t+1/12);
+  rows.push({elapsed:t,year:c.startYear+t,age:c.startYear+t-c.birthYear,working:false,saving:0,extraAsset,vtiContribution:0,schdContribution:0,safeContribution:0,vti:vShares*vp,schd:sShares*sp,cash,total:vShares*vp+sShares*sp+cash,deflator,netDividend,grossDividend,netInterest,requestedWithdrawal,withdrawal,stockSold,cashUsed,unfunded,income,budget,realIncome,realBudget,realNaturalIncome,realGap,livingGap,maxMonthlyGapReal,firstGapMonth,firstUnfundedMonth,hadEmpty,hadLivingGap:firstGapMonth!==null,hadUnfunded:firstUnfundedMonth!==null,refillSold,downMarketSold,minCashMonths:Number.isFinite(minCashMonths)?minCashMonths:null,cashMonths:nextMonthly>0?cash/nextMonthly:null,cashTarget,cashFloor,marketDrawdown:1-indexValue()/peakIndex,refillEligible:healthy,vtiReturn:ytdV-1,schdReturn:ytdS-1});
+ }
+ return rows;
+}
+// Seeded annual paths remain available for the original calculation checks.
+function stressRandom(seed){let state=seed>>>0;return ()=>{state=(state+0x6D2B79F5)>>>0;let x=state;x=Math.imul(x^(x>>>15),x|1);x^=x+Math.imul(x^(x>>>7),x|61);return (((x^(x>>>14))>>>0)+.5)/4294967296;};}
+function stressShock(v,s,c){const factor=r=>r<=-.20?Math.max(0,1+r*c.stressDividendCut/100):1;return {vtiReturn:v,schdReturn:s,vtiDividendFactor:factor(v),schdDividendFactor:factor(s)};}
+function randomMarketPath(c,random){
+ const path=[],rho=c.stressCorr/100,sigmaV=c.stressVtiVol/100,sigmaS=c.stressSchdVol/100;
+ for(let t=1;t<=c.retireYears+c.horizon;t++){
+  // Consume the same draws across settings so policy comparisons share shocks.
+  const radius=Math.sqrt(-2*Math.log(random())),angle=2*Math.PI*random(),zV=radius*Math.cos(angle),zS=rho*zV+Math.sqrt(Math.max(0,1-rho*rho))*radius*Math.sin(angle);
+  if(c.stressScope==='retirement'&&t<=c.retireYears){path.push({});continue;}
+  const v=Math.expm1(Math.log1p(c.vtiPriceGrowth/100)+sigmaV*zV),s=Math.expm1(Math.log1p(c.schdPriceGrowth/100)+sigmaS*zS);
+  path.push(stressShock(v,s,c));
+ }
+ return path;
+}
+function stressConfig(c){return {...c,withdrawMode:c.stressSpending==='budget'?'budget':c.withdrawMode};}
+function crashMarketPath(c,late=false){
+ const duration=Math.min(c.horizon,c.stressCrashDuration),start=late?c.horizon-duration:0;
+ return Array.from({length:c.retireYears+c.horizon},(_,i)=>i>=c.retireYears+start&&i<c.retireYears+start+duration?stressShock(-c.stressCrash/100,-c.stressCrash/100,c):{});
+}
+function stressPathSummary(rows,c){
+ const retired=rows.slice(c.retireYears+1),gap=r=>r.livingGap??Math.max(0,r.budget-r.income),firstGap=retired.find(r=>r.hadLivingGap??(gap(r)>.00001)),firstUnfunded=retired.find(r=>r.hadUnfunded??(r.unfunded>.00001)),firstEmpty=retired.find(r=>r.hadEmpty??(r.total<.00001));
+ return {retire:rows[c.retireYears],final:rows[rows.length-1],firstGap,firstUnfunded,firstEmpty,maxGapReal:Math.max(0,...retired.map(r=>r.maxMonthlyGapReal??gap(r)/r.deflator/12)),gapSum:retired.reduce((sum,r)=>sum+(r.realGap??gap(r)/r.deflator),0),refillTotal:retired.reduce((sum,r)=>sum+(r.refillSold||0)/r.deflator,0),downSaleTotal:retired.reduce((sum,r)=>sum+(r.downMarketSold||0)/r.deflator,0),minCashMonths:Math.min(Infinity,...retired.map(r=>r.minCashMonths??Infinity))};
+}
+function createStressAccumulator(c){return {count:0,supported:0,unfunded:0,empty:0,refills:[],downSales:[],cashMonths:[],values:Array.from({length:c.retireYears+c.horizon+1},()=>[]),worst:null};}
+function addStressPath(acc,rows,c){
+ const summary=stressPathSummary(rows,c);acc.count++;if(!summary.firstGap)acc.supported++;if(summary.firstUnfunded)acc.unfunded++;if(summary.firstEmpty)acc.empty++;
+ rows.forEach((r,i)=>acc.values[i].push(r.total));
+ acc.refills.push(summary.refillTotal);acc.downSales.push(summary.downSaleTotal);acc.cashMonths.push(summary.minCashMonths);
+ if(!acc.worst||summary.final.total<acc.worst.summary.final.total-1e-7||(Math.abs(summary.final.total-acc.worst.summary.final.total)<=1e-7&&summary.gapSum>acc.worst.summary.gapSum))acc.worst={rows,summary};
+}
+function stressQuantile(sorted,p){const at=(sorted.length-1)*p,lo=Math.floor(at),hi=Math.ceil(at);return sorted[lo]+(sorted[hi]-sorted[lo])*(at-lo);}
+function finishStress(acc,c,runner=simulate){
+ const effective=stressConfig(c),flat=runner(effective),early=runner(effective,crashMarketPath(c)),late=runner(effective,crashMarketPath(c,true));
+ return {count:acc.count,supported:acc.supported,unfunded:acc.unfunded,empty:acc.empty,bands:acc.values.map((values,i)=>{values.sort((a,b)=>a-b);return {elapsed:i,year:c.startYear+i,deflator:Math.pow(1+c.inflation/100,i),p10:stressQuantile(values,.1),p50:stressQuantile(values,.5),p90:stressQuantile(values,.9)};}),cases:{flat:{name:'일정 수익률 기준선',rows:flat},early:{name:'은퇴 초반 급락',rows:early},late:{name:'은퇴 후반 급락',rows:late},worst:{name:'반복 경로 중 기말 자산 최저',rows:acc.worst.rows}}};
+}
+
+</script>
+<script id="interface">
+'use strict';
+const $=id=>document.getElementById(id),storageKey='retirement-planner-local-v1',historyStorageKey='retirement-planner-records-v1';
+let config=structuredClone(DEFAULTS),projection=[],stressResult=null,stressVersion=0,stressRunning=false,stressActiveKey='';
+try{const saved=JSON.parse(localStorage.getItem(storageKey)||'null');if(saved){const candidate=normalizeConfig(saved);if(!validateConfig(candidate))config=candidate;}}catch{}
+const fieldKeys=Object.keys(DEFAULTS).filter(k=>!['allocations','safeAllocations','budgetItems','extraAssets'].includes(k));
+const amount=v=>Number(v).toLocaleString('ko-KR',{maximumFractionDigits:0});
+const decimal=v=>Number(v).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
+function cashText(v){return Math.abs(v)>=10000?decimal(v/10000)+'억원':amount(v)+'만원';}
+function assetHtml(v){return Math.abs(v)>=10000?decimal(v/10000)+'<span> 억원</span>':amount(v)+'<span> 만원</span>';}
+function displayValue(v,row){return config.realTerms?v/row.deflator:v;}
+function fillFields(){for(const k of fieldKeys){const el=$(k);if(el.type==='checkbox')el.checked=config[k];else el.value=config[k];}$('bulkSafeRatio').value=config.safeSavingPct;renderBudgetItems();}
+function readFields(){for(const k of fieldKeys){const el=$(k);config[k]=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?el.value:el.value===''?NaN:Number(el.value);}}
+function renderBudgetItems(){
+ const list=$('budgetItemsList');list.replaceChildren();
+ if(!config.budgetItems.length)list.append(historyElement('p','help','항목을 추가해 현재 기준 생활비를 정리하세요. 금액 단위는 만원입니다.'));
+ config.budgetItems.forEach((item,i)=>{
+  const row=historyElement('div','budget-item'),name=historyElement('input','budget-name'),money=historyElement('input','budget-money'),frequency=historyElement('select','budget-frequency'),remove=historyElement('button','budget-remove','삭제');
+  name.type='text';name.value=item.name;name.maxLength=80;name.placeholder='식비 · 관리비 등';name.setAttribute('aria-label',(i+1)+'번 생활비 항목 이름');
+  money.type='number';money.value=Number.isFinite(item.amount)?item.amount:'';money.min='0';money.max='100000';money.step='.1';money.setAttribute('aria-label',(i+1)+'번 생활비 금액 · 만원');
+  for(const [value,label] of [['monthly','매월'],['annual','연간']]){const option=historyElement('option','',label);option.value=value;frequency.append(option);}frequency.value=item.frequency;frequency.setAttribute('aria-label',(i+1)+'번 생활비 지출 주기');
+  for(const [input,key] of [[name,'name'],[money,'amount'],[frequency,'frequency']]){input.setAttribute('data-budget-index',String(i));input.setAttribute('data-budget-key',key);}
+  remove.type='button';remove.setAttribute('data-budget-remove',String(i));remove.setAttribute('aria-label',(item.name||'생활비 항목')+' 삭제');row.append(name,money,frequency,remove);list.append(row);
+ });
+ refreshBudgetSummary();
+}
+function refreshBudgetSummary(){
+ const total=monthlyBudgetTotal(config.budgetItems),valid=Number.isFinite(total)&&total>=0&&total<=100000;
+ $('budgetMonthlyTotal').textContent=valid?decimal(total)+'만원 / 월':'항목 금액 확인';
+ $('applyBudgetTotal').disabled=!valid||!config.budgetItems.length;
+ $('budgetItemsNote').textContent=!valid?'항목 금액과 합계를 확인하세요. 목표 생활비는 월 100,000만원 이하여야 합니다.':!config.budgetItems.length?'목표 생활비는 항목을 추가한 뒤 ‘합계 반영’을 눌러 변경합니다.':Math.abs(total-config.monthlyBudget)<1e-7?'항목 합계와 현재 목표 생활비가 같습니다.':'현재 목표 생활비는 월 '+decimal(config.monthlyBudget)+'만원입니다. ‘합계 반영’을 누르면 위 합계로 바뀝니다.';
+}
+function persist(){try{localStorage.setItem(storageKey,JSON.stringify(config));$('saveStatus').textContent='현재 입력 자동 저장됨';}catch{$('saveStatus').textContent='자동 저장을 사용할 수 없습니다. JSON 내보내기를 이용하세요.';}}
+function setError(message){$('errorBox').textContent=message;$('errorBox').classList.toggle('hidden',!message);if(message){document.querySelectorAll('.metric-value').forEach(e=>e.textContent='입력 확인');$('retireAssetsNote').textContent='아래 결과는 마지막 유효한 입력 기준입니다.';}}
+function renderAllocation(){
+ const count=Math.max(1,config.retireYears+config.horizon);let html='';
+ for(let i=0;i<count;i++){
+  const ratio=stockPctFor(config,i),cells=allocationCells(i),year=config.startYear+i+1;
+  html+='<tr><td>'+year+'년 · '+(i<config.retireYears?'저축':'은퇴')+'</td><td>'+amount(cells.saving)+'</td><td><input class="allocation-input" style="width:100px" type="number" min="0" max="10000000" step="100" value="'+(config.extraAssets[i]||'')+'" placeholder="0" data-year="'+i+'" data-kind="extra" aria-label="'+year+'년 세후 추가 자산 · 만원"></td><td><input class="allocation-input" type="number" min="0" max="100" step="5" value="'+(config.safeAllocations[i]??'')+'" placeholder="'+config.safeSavingPct+'" data-year="'+i+'" data-kind="safe" aria-label="'+year+'년 안전자산 비율"></td><td><input class="allocation-input" type="number" min="0" max="100" step="5" value="'+ratio+'" data-year="'+i+'" data-kind="vti" aria-label="'+year+'년 주식 내 VTI 비율"></td><td>'+decimal(100-ratio)+'</td><td>'+cells.percent+'</td><td>'+cells.money+'</td></tr>';
+ }
+ $('allocationRows').innerHTML=html;
+ $('allocationNote').textContent='안전자산 공란은 기본 비중('+decimal(config.safeSavingPct)+'%)을 사용합니다. 퇴직금 등 추가 자산은 세후 수령액을 해당 연도 명목금액으로 입력하세요. 그해 말 저축액과 합쳐 같은 비율로 배분하며, 수령 전 생활비나 그해 수익에는 반영하지 않습니다. 저축 종료 후에도 추가 자산을 입력할 수 있습니다. 첫 행의 주식 내 비율은 최초 현금 투자에도 적용합니다.';
+}
+function allocationCells(i){
+ const saving=i<config.retireYears?contributionFor(config,i):0,total=saving+(config.extraAssets[i]||0),safePct=safePctFor(config,i),vtiPct=(100-safePct)*stockPctFor(config,i)/100,schdPct=100-safePct-vtiPct;
+ return {saving,percent:decimal(vtiPct)+' / '+decimal(schdPct)+' / '+decimal(safePct),money:amount(total*vtiPct/100)+' / '+amount(total*schdPct/100)+' / '+amount(total*safePct/100)+'<div class="ratio-bar"><i style="width:'+vtiPct+'%"></i><i style="width:'+schdPct+'%;background:#be8538"></i><i style="width:'+safePct+'%;background:#9aafa3"></i></div>'};
+}
+function svgChart(target,series,rows,height,retireLine){
+ const width=900,left=64,right=22,top=22,bottom=35,plotW=width-left-right,plotH=height-top-bottom;
+ const all=series.flatMap(s=>s.values);const maxRaw=Math.max(1,...all),step=Math.pow(10,Math.floor(Math.log10(maxRaw)))/2,max=Math.ceil(maxRaw/step)*step;
+ const x=i=>left+(rows.length>1?i/(rows.length-1):0)*plotW,y=v=>top+plotH-v/max*plotH;
+ const paths=series.map(s=>s.values.map((v,i)=>(i?'L':'M')+x(i).toFixed(2)+','+y(v).toFixed(2)).join(' '));
+ let svg='<title>'+target.getAttribute('aria-label')+'</title>';
+ for(let j=0;j<=4;j++){const val=max*j/4,yy=y(val);svg+='<line x1="'+left+'" x2="'+(width-right)+'" y1="'+yy+'" y2="'+yy+'" stroke="#e7ece7"/><text x="'+(left-10)+'" y="'+(yy+4)+'" text-anchor="end" fill="#718279" font-size="11">'+(val>=10000?decimal(val/10000)+'억':amount(val))+'</text>';}
+ series.forEach((s,i)=>{if(s.area){const under=s.under||rows.map(()=>0);const d=paths[i]+' '+under.map((v,j)=>'L'+x(rows.length-1-j).toFixed(2)+','+y(under[rows.length-1-j]).toFixed(2)).join(' ')+' Z';svg+='<path d="'+d+'" fill="'+s.color+'" opacity="'+(s.opacity||.9)+'"/>';}});
+ series.forEach((s,i)=>{svg+='<path d="'+paths[i]+'" fill="none" stroke="'+s.color+'" stroke-width="'+(s.width||2.5)+'"'+(s.dashed?' stroke-dasharray="5 5"':'')+'/>';});
+ if(retireLine!==null&&retireLine!==undefined){const ii=rows.findIndex(r=>r.elapsed===retireLine);if(ii>=0){const xx=x(ii);svg+='<line x1="'+xx+'" x2="'+xx+'" y1="'+top+'" y2="'+(height-bottom)+'" stroke="#6b8579" stroke-dasharray="4 5"/><text x="'+Math.min(width-right-70,xx+7)+'" y="'+(top+12)+'" fill="#526d60" font-size="11">저축 종료</text>';}}
+ const indices=[...new Set([0,Math.round((rows.length-1)/4),Math.round((rows.length-1)/2),Math.round((rows.length-1)*3/4),rows.length-1])];
+ indices.forEach(i=>{svg+='<text x="'+x(i)+'" y="'+(height-10)+'" text-anchor="middle" fill="#718279" font-size="11">'+rows[i].year+'</text>';});
+ target.innerHTML=svg;
+}
+function renderCharts(){
+ const rows=projection;
+ const v=rows.map(r=>displayValue(r.vti,r)),s=rows.map(r=>displayValue(r.vti+r.schd,r)),total=rows.map(r=>displayValue(r.total,r));
+ svgChart($('assetChart'),[{values:total,under:s,color:'#9aafa3',area:true},{values:s,under:v,color:'#be8538',area:true},{values:v,color:'#176c60',area:true}],rows,280,config.retireYears);
+ const retired=rows.filter(r=>r.elapsed>config.retireYears);
+ svgChart($('incomeChart'),[{values:retired.map(r=>displayValue((r.netDividend+r.netInterest)/12,r)),color:'#176c60'},{values:retired.map(r=>displayValue(r.income/12,r)),color:'#426a9c'},{values:retired.map(r=>displayValue(r.budget/12,r)),color:'#b7aaa0',dashed:true,width:2}],retired,225,null);
+}
+function renderSummary(){
+ const ret=projection[config.retireYears],first=projection[config.retireYears+1],ten=projection[config.retireYears+10];
+ const basis=config.realTerms?'현재 구매력':'해당 시점 명목금액';
+ const signed=v=>(v>0?'+':'')+decimal(v)+'%';
+ $('activeVtiRates').textContent='VTI · 주가 '+signed(config.vtiPriceGrowth)+'/년 · 시작 배당률 '+Number(config.vtiYield).toLocaleString('ko-KR',{maximumFractionDigits:2})+'% · 주당 배당 '+signed(config.vtiDividendGrowth)+'/년';
+ $('activeSchdRates').textContent='SCHD · 주가 '+signed(config.schdPriceGrowth)+'/년 · 시작 배당률 '+Number(config.schdYield).toLocaleString('ko-KR',{maximumFractionDigits:2})+'% · 주당 배당 '+signed(config.schdDividendGrowth)+'/년';
+ $('timelineLabel').textContent=config.startYear+'년 시작 · '+ret.year+'년 저축 종료 · '+ret.age+'세 · '+basis;
+ $('retireAssets').innerHTML=assetHtml(displayValue(ret.total,ret));
+ $('retireAssetsNote').textContent=ret.year+'년 말 · '+basis;
+ $('retireIncome').innerHTML=decimal(displayValue(first.income/12,first))+'<span> 만원</span>';
+ $('retireIncomeNote').textContent=first.year+'년 · 배당·이자 + 추가 인출';
+ $('afterTenAssets').innerHTML=ten?assetHtml(displayValue(ten.total,ten)):'기간 부족';
+ $('afterTenNote').textContent=ten?ten.year+'년 말 · '+ten.age+'세':'은퇴 후 계산 기간을 10년 이상으로 설정하세요.';
+ const monthly=[first.netDividend/12,first.netInterest/12,first.withdrawal/12],sum=monthly.reduce((a,b)=>a+b,0),colors=['#176c60','#9aafa3','#426a9c'];
+ $('incomeStack').innerHTML=monthly.map((n,i)=>'<span style="width:'+(sum?n/sum*100:0)+'%;background:'+colors[i]+'"></span>').join('');
+ $('incomeDividend').textContent=decimal(displayValue(first.netDividend/12,first))+'만원 / 월';
+ $('incomeInterest').textContent=decimal(displayValue(first.netInterest/12,first))+'만원 / 월';
+ $('incomeWithdrawal').textContent=decimal(displayValue(first.withdrawal/12,first))+'만원 / 월';
+ $('incomeBudget').textContent=decimal(displayValue(first.budget/12,first))+'만원 / 월';
+ const gap=displayValue((first.income-first.budget)/12,first);
+ $('incomeGap').textContent=gap>=0?'첫 은퇴연도에 목표 생활비보다 월 '+decimal(gap)+'만원 여유가 있습니다.':'첫 은퇴연도에 목표 생활비보다 월 '+decimal(-gap)+'만원 부족합니다.';
+ $('incomeGap').style.background=gap>=0?'#edf5ec':'#fff3e7';$('incomeGap').style.color=gap>=0?'#45675a':'#92522e';
+ const parts=[ret.vti,ret.schd,ret.cash];$('assetStack').innerHTML=parts.map((n,i)=>'<span style="width:'+(ret.total?n/ret.total*100:0)+'%;background:'+['#176c60','#be8538','#9aafa3'][i]+'"></span>').join('');
+ ['splitVti','splitSchd','splitCash'].forEach((id,i)=>{$(id).textContent=cashText(displayValue(parts[i],ret))+' · '+decimal(ret.total?parts[i]/ret.total*100:0)+'%';});
+ $('chartBasis').textContent='단위: 만원 · '+basis+' · 배당은 은퇴 전 재투자, 은퇴 후 생활비 사용';
+ $('tableUnit').textContent='단위: 만원 · '+basis;
+ const empty=projection.find(r=>r.unfunded>0.00001),messages=[];
+ if(empty)messages.push(empty.year+'년부터 요청한 추가 인출을 전부 충당하지 못합니다. 재원 또는 인출액을 조정해 보세요.');
+ if(config.vtiDividendGrowth>config.vtiPriceGrowth+5||config.schdDividendGrowth>config.schdPriceGrowth+5)messages.push('배당이 주가보다 빠르게 증가하는 가정이 오래 지속되면 배당수익률이 크게 높아집니다. 장기 가정을 확인하세요.');
+ $('warningBox').textContent=messages.join(' ');$('warningBox').classList.toggle('hidden',!messages.length);
+}
+function renderProjection(){
+ $('projectionRows').innerHTML=projection.map(r=>'<tr class="'+(r.elapsed===config.retireYears?'retired-row':'')+'"><td>'+r.year+'년 / '+r.age+'세</td><td>'+(r.elapsed===0?'시작':r.working?'저축':'은퇴')+'</td>'+[r.saving,r.extraAsset||0,r.netDividend,r.netInterest,r.withdrawal,r.unfunded,r.vti,r.schd,r.cash,r.total].map((v,i)=>'<td'+(i===5&&v>.001?' class="negative"':'')+'>'+amount(displayValue(v,r))+'</td>').join('')+'<td>'+(r.working||r.elapsed===0?'—':decimal(displayValue(r.income/12,r)))+'</td><td>'+(r.working||r.elapsed===0?'—':decimal(r.income/12/r.deflator))+'</td></tr>').join('');
+}
+function stressInputKey(c){const copy={...c};delete copy.realTerms;delete copy.budgetItems;return JSON.stringify(copy);}
+function stressBusy(busy){stressRunning=busy;$('runStress').disabled=busy;$('rerollStress').disabled=busy;$('stressProgress').classList.toggle('hidden',!busy);}
+function refreshStressState(){
+ const valid=!validateConfig(config),key=valid?stressInputKey(config):'';
+ if(stressRunning&&key!==stressActiveKey){stressVersion++;stressBusy(false);}
+ if(stressResult&&key===stressResult.key&&!stressRunning){renderStress();$('stressStatus').textContent='계산 완료 · '+amount(stressResult.count)+'개 경로 · 난수 번호 '+stressResult.config.stressSeed;return;}
+ if(stressRunning)return;
+ $('stressResults').classList.add('hidden');$('exportStress').disabled=true;
+ $('stressStatus').textContent=!valid?'입력을 확인한 뒤 실행하세요.':stressResult?'설정이 바뀌었습니다. 다시 실행하면 새 설정으로 계산합니다.':'현재 설정으로 실행하면 결과가 표시됩니다. 설정과 결과는 자동으로 섞이지 않습니다.';
+}
+async function runStress(){
+ update();if(validateConfig(config))return;
+ const c=structuredClone(config),key=stressInputKey(c),effective=stressConfig(c),random=stressRandom(c.stressSeed),accumulators=Object.fromEntries(Object.keys(BUFFER_POLICIES).map(p=>[p,createStressAccumulator(c)])),version=++stressVersion;
+ stressActiveKey=key;stressBusy(true);$('stressResults').classList.add('hidden');$('exportStress').disabled=true;$('stressProgress').value=0;
+ $('stressStatus').textContent='시장 경로 계산 중 · 0 / '+amount(c.stressCount);
+ try{
+  for(let i=0;i<c.stressCount;i++){
+   if(version!==stressVersion)return;
+   const market=monthlyMarketPath(c,random);
+   for(const policy of Object.keys(BUFFER_POLICIES))addStressPath(accumulators[policy],simulateMonthly(effective,market,policy),c);
+   if((i+1)%10===0){$('stressProgress').value=(i+1)/c.stressCount*100;$('stressStatus').textContent='시장 경로 계산 중 · '+amount(i+1)+' / '+amount(c.stressCount)+' · 세 전략 비교';await new Promise(resolve=>setTimeout(resolve,0));}
+  }
+  if(version!==stressVersion)return;
+  const strategies=Object.fromEntries(Object.entries(accumulators).map(([policy,acc])=>{const end=acc.values[acc.values.length-1].slice().sort((a,b)=>a-b),refills=acc.refills.slice().sort((a,b)=>a-b),down=acc.downSales.slice().sort((a,b)=>a-b);return [policy,{count:acc.count,supported:acc.supported,unfunded:acc.unfunded,empty:acc.empty,p10:stressQuantile(end,.1),p50:stressQuantile(end,.5),refills:stressQuantile(refills,.5),downSales:stressQuantile(down,.5)}];}));
+  stressResult={...finishStress(accumulators[c.stressBufferPolicy],c,(settings,path)=>simulateMonthly(settings,path,c.stressBufferPolicy)),strategies,config:c,key};stressBusy(false);renderStress();
+  $('stressStatus').textContent='계산 완료 · '+amount(c.stressCount)+'개 경로 · 난수 번호 '+c.stressSeed+' · 설정 변경 후 다시 실행하세요.';
+ }catch(err){if(version!==stressVersion)return;stressBusy(false);$('stressStatus').textContent='시뮬레이션을 완료하지 못했습니다. '+err.message;}
+}
+function stressRows(){return stressResult.cases[$('stressTrace').value||'early'].rows;}
+function renderStress(){
+ if(!stressResult)return;
+ const result=stressResult,c=result.config,last=result.bands[result.bands.length-1],value=(v,row)=>config.realTerms?v/row.deflator:v,basis=config.realTerms?'현재 구매력':'해당 시점 명목금액',percent=n=>decimal(n/result.count*100)+'%';
+ $('stressResults').classList.remove('hidden');$('exportStress').disabled=false;
+ $('stressSupport').textContent=percent(result.supported);$('stressSupportNote').textContent=amount(result.supported)+' / '+amount(result.count)+'개 · 은퇴 '+c.horizon+'년 모두 충당';
+ $('stressFailure').textContent=percent(result.unfunded);$('stressFailureNote').textContent='총자산 소진 경로 '+percent(result.empty)+' · 미충당과 별도 판정';
+ $('stressMedian').innerHTML=assetHtml(value(last.p50,last));$('stressMedianNote').textContent='10~90백분위 '+cashText(value(last.p10,last))+' ~ '+cashText(value(last.p90,last));
+ const spending=c.stressSpending==='budget'||c.withdrawMode==='budget'?'목표 생활비 부족분 인출':'배당·이자 + 연 추가 인출 '+amount(c.annualWithdrawal)+'만원';
+ $('stressInterpretation').textContent='선택 전략: '+BUFFER_POLICIES[c.stressBufferPolicy]+' · 생활비: 현재 구매력 월 '+amount(c.monthlyBudget)+'만원 · '+spending+'. 세 전략 모두 안전자산을 먼저 쓰고, 부족할 때 '+(c.stressStockSale==='vtiFirst'?'VTI 우선으로':'주식 보유가치 비례로')+' 매도합니다. 기본 계산의 인출 재원과는 별도입니다. '+(c.stressSpending==='plan'&&c.withdrawMode==='extra'?'정액 추가 인출 방식은 생활비가 부족해도 자동 증액하지 않습니다. ':'')+'생활비 충당은 모든 은퇴 월을 기준으로 판정합니다. 표시 비율은 모형 안의 경로 비중이며 실제 성공 확률이 아닙니다.';
+ $('bufferStrategyRows').innerHTML=Object.entries(BUFFER_POLICIES).map(([policy,name])=>{const s=result.strategies[policy];return '<tr'+(policy===c.stressBufferPolicy?' class="retired-row"':'')+'><td>'+name+'</td><td>'+decimal(s.supported/s.count*100)+'%</td><td>'+decimal(s.unfunded/s.count*100)+'%</td><td>'+amount(value(s.p50,last))+'</td><td>'+amount(value(s.p10,last))+'</td><td>'+amount(s.refills)+'</td><td>'+amount(s.downSales)+'</td></tr>';}).join('');
+ const selected=stressRows();svgChart($('stressChart'),[{values:result.bands.map(r=>value(r.p90,r)),under:result.bands.map(r=>value(r.p10,r)),color:'#dae9e0',area:true,width:1},{values:result.bands.map(r=>value(r.p10,r)),color:'#dae9e0',width:1},{values:result.bands.map(r=>value(r.p50,r)),color:'#176c60'},{values:selected.map(r=>value(r.total,r)),color:'#ac443a',width:2}],result.bands,280,c.retireYears);
+ $('stressBasis').textContent='단위: 만원 · '+basis+' · 음영은 각 연도별 10~90백분위이며, 80% 확률 보장 구간이 아닙니다. 선택 경로: '+result.cases[$('stressTrace').value||'early'].name;
+ const firstText=(r,month)=>r?r.year+'년'+(month?' '+month+'월':'')+' · 은퇴 '+(r.elapsed-c.retireYears)+'년차':'없음';
+ $('stressCases').innerHTML=['flat','early','late','worst'].map(k=>{const item=result.cases[k],s=stressPathSummary(item.rows,c);return '<tr><td>'+item.name+'</td><td>'+amount(value(s.retire.total,s.retire))+'</td><td>'+amount(value(s.final.total,s.final))+'</td><td'+(s.firstGap?' class="negative"':'')+'>'+firstText(s.firstGap,s.firstGap?.firstGapMonth)+'</td><td'+(s.firstUnfunded?' class="negative"':'')+'>'+firstText(s.firstUnfunded,s.firstUnfunded?.firstUnfundedMonth)+'</td><td>'+decimal(s.maxGapReal)+'</td></tr>';}).join('');
+ const duration=Math.min(c.horizon,c.stressCrashDuration),loss=(1-Math.pow(1-c.stressCrash/100,duration))*100;
+ $('stressScenarioNote').textContent='금액 단위: 만원 · '+basis+'. 급락 비교는 연 −'+decimal(c.stressCrash)+'%를 '+duration+'년 연속 적용(주가 누적 −'+decimal(loss)+'%). 초반은 은퇴 1년차, 후반은 '+(c.horizon-duration+1)+'년차부터 시작하며 나머지 해는 기본 상승률입니다. 두 비교 경로는 같은 주가 수익률 묶음을 사용합니다. 반복 경로 중 최저는 이번 실행에서 관측된 사례이며 최악의 가능성을 뜻하지 않습니다.';
+ const retired=selected.slice(c.retireYears+1);svgChart($('bufferCashChart'),[{values:retired.map(r=>value(r.cash,r)),color:'#176c60'},{values:retired.map(r=>value(r.cashTarget,r)),color:'#426a9c',dashed:true},{values:retired.map(r=>value(r.cashFloor,r)),color:'#be8538',dashed:true}],retired,225,null);
+ const summary=stressPathSummary(selected,c);$('bufferTraceNote').textContent='선택 경로 · 보충 매도 합계 '+cashText(summary.refillTotal)+' · 고점 미회복 중 매도 합계 '+cashText(summary.downSaleTotal)+' · 모두 현재 가치 환산. 은퇴 중 안전자산 최소 잔여 생활비 '+(Number.isFinite(summary.minCashMonths)?decimal(summary.minCashMonths)+'개월':'지출 없음')+'. 고점 미회복 중 매도에는 생활비 매도와 보충 매도가 함께 포함됩니다.';
+ $('stressTraceRows').innerHTML=retired.map(r=>'<tr><td>'+r.year+'년 / '+(r.elapsed-c.retireYears)+'년차</td><td'+(r.vtiReturn<0?' class="negative"':'')+'>'+decimal(r.vtiReturn*100)+'%</td><td'+(r.schdReturn<0?' class="negative"':'')+'>'+decimal(r.schdReturn*100)+'%</td><td>'+decimal(config.realTerms?r.realNaturalIncome/12:(r.netDividend+r.netInterest)/12)+'</td><td>'+amount(value(r.stockSold,r))+'</td><td>'+amount(value(r.cashUsed,r))+'</td><td>'+amount(value(r.refillSold,r))+'</td><td>'+amount(value(r.cash,r))+'</td><td>'+(r.cashMonths===null?'—':decimal(r.cashMonths))+'</td><td>'+amount(value(r.total,r))+'</td><td>'+decimal(config.realTerms?r.realIncome/12:r.income/12)+'</td><td>'+decimal(r.realIncome/12)+'</td><td'+(r.hadLivingGap?' class="negative"':'')+'>'+decimal(r.maxMonthlyGapReal)+'</td></tr>').join('');
+}
+function update(rebuildSchedule=true){
+ readFields();refreshBudgetSummary();$('savingGrowthUnit').textContent=config.savingGrowthMode==='fixed'?'만원':'%';$('retireYearsLabel').textContent=config.retireYears+'년';
+ $('annualWithdrawal').disabled=config.withdrawMode==='budget';$('inflateWithdrawal').disabled=config.withdrawMode==='budget';
+ $('retireNote').textContent=config.retireYears===0?'현재 자산으로 즉시 은퇴하는 경우를 계산합니다.':(config.startYear+1)+'~'+(config.startYear+config.retireYears)+'년 저축, '+(config.startYear+config.retireYears+1)+'년부터 인출합니다.';
+ const error=validateConfig(config);setError(error);refreshStressState();if(error)return;
+ projection=simulate(config);if(rebuildSchedule)renderAllocation();renderSummary();renderCharts();renderProjection();persist();
+}
+function download(name,text,type){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+let savedRecords=[],historyReadError='';
+try{
+ const stored=JSON.parse(localStorage.getItem(historyStorageKey)||'[]');
+ if(!Array.isArray(stored))throw new Error('기록 목록 형식이 올바르지 않습니다.');
+ savedRecords=stored.map(record=>{
+  if(!record||typeof record.id!=='string'||typeof record.name!=='string'||!record.name.trim()||!Number.isFinite(Date.parse(record.savedAt))||!record.config||typeof record.config!=='object')throw new Error('저장된 기록의 내용을 확인할 수 없습니다.');
+  const candidate=normalizeConfig(record.config),error=validateConfig(candidate);
+  if(error)throw new Error(error);
+  return {id:record.id,name:record.name.slice(0,80),savedAt:record.savedAt,config:candidate};
+ });
+}catch(err){historyReadError='저장 기록을 읽을 수 없습니다. 기존 기록을 보호하기 위해 새 기록 저장을 중단했습니다. 현재 설정은 JSON으로 내보낼 수 있습니다.';}
+function historyMessage(message,failed=false){$('historyStatus').textContent=message;$('historyStatus').classList.toggle('failed',failed);}
+function writeRecords(next){
+ if(historyReadError){historyMessage(historyReadError,true);return false;}
+ try{localStorage.setItem(historyStorageKey,JSON.stringify(next));savedRecords=next;return true;}
+ catch{historyMessage('브라우저에 기록을 저장하지 못했습니다. 저장 공간이나 브라우저 설정을 확인하고, JSON 내보내기로 백업하세요.',true);return false;}
+}
+function historyElement(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=text;return el;}
+function recordDate(iso){return new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(iso));}
+function recordSummary(c){
+ const growth=c.savingGrowth===0?'증가 없음':c.savingGrowthMode==='fixed'?'매년 '+amount(c.savingGrowth)+'만원 증가':'매년 '+decimal(c.savingGrowth)+'% 증가';
+ const income=c.withdrawMode==='budget'?'목표 생활비 월 '+amount(c.monthlyBudget)+'만원':'연 추가 인출 '+amount(c.annualWithdrawal)+'만원';
+ const source={stocks:'주식 비례 매도',vtiFirst:'VTI 우선',cashFirst:'안전자산 우선'}[c.withdrawSource];
+ return (c.startYear+c.retireYears)+'년 은퇴 · 연 저축 '+amount(c.annualSaving)+'만원 ('+growth+') · 물가 '+decimal(c.inflation)+'% · '+income+' · '+source;
+}
+function renderHistory(){
+ $('historyCount').textContent=savedRecords.length+'개';$('loadConfig').textContent='저장 기록'+(savedRecords.length?' ('+savedRecords.length+')':'');
+ const list=$('historyList');list.replaceChildren();
+ if(historyReadError){historyMessage(historyReadError,true);return;}
+ if(!savedRecords.length){list.append(historyElement('div','empty','아직 저장한 기록이 없습니다. 이름을 입력해 현재 설정을 저장하거나 기존 JSON 파일을 불러오세요.'));return;}
+ for(const record of savedRecords){
+  const item=historyElement('article','history-item'),copy=historyElement('div','history-copy'),actions=historyElement('div','history-actions');
+  copy.append(historyElement('div','history-name',record.name),historyElement('div','history-meta',recordDate(record.savedAt)+' 저장'),historyElement('div','history-meta',recordSummary(record.config)));
+  const load=historyElement('button','primary','불러오기');load.type='button';load.setAttribute('aria-label',record.name+' 기록 불러오기');
+  load.addEventListener('click',()=>{
+   previousConfig=structuredClone(config);config=normalizeConfig(record.config);fillFields();update();
+   $('historyName').value=record.name;historyMessage('‘'+record.name+'’ 기록을 불러왔습니다. 모든 입력과 연도별 투자 비율을 복원했습니다.');allowUndo('기록을 불러왔습니다.');
+  });
+  const backup=historyElement('button','','JSON');backup.type='button';backup.setAttribute('aria-label',record.name+' 기록 JSON 내보내기');
+  backup.addEventListener('click',()=>{const filename=record.name.replace(/[\\/:*?"<>|]/g,'_').slice(0,80);download('은퇴계획_'+filename+'.json',JSON.stringify({version:1,...record.config},null,2),'application/json');historyMessage('‘'+record.name+'’ 기록을 JSON으로 내보냈습니다.');});
+  const remove=historyElement('button','','삭제');remove.type='button';remove.setAttribute('aria-label',record.name+' 기록 삭제');
+  remove.addEventListener('click',()=>{
+   if(!writeRecords(savedRecords.filter(r=>r.id!==record.id)))return;
+   renderHistory();historyMessage('‘'+record.name+'’ 기록을 삭제했습니다.');
+   const undo=historyElement('button','preset-link','되돌리기');undo.type='button';undo.addEventListener('click',()=>{
+    if(savedRecords.some(r=>r.id===record.id))return;
+    if(writeRecords([...savedRecords,record].sort((a,b)=>Date.parse(b.savedAt)-Date.parse(a.savedAt)))){renderHistory();historyMessage('삭제한 기록을 복원했습니다.');}
+   });$('historyStatus').append(undo);
+  });
+  actions.append(load,backup,remove);item.append(copy,actions);list.append(item);
+ }
+}
+function openHistory(focusName=false){
+ $('historyPanel').classList.remove('hidden');$('loadConfig').setAttribute('aria-expanded','true');renderHistory();
+ if(focusName){if(!$('historyName').value.trim())$('historyName').value=(config.startYear+config.retireYears)+'년 은퇴 계획';$('historyName').focus({preventScroll:true});$('historyName').select();}
+ $('historyPanel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function saveRecord(event){
+ event.preventDefault();readFields();const error=validateConfig(config);if(error){setError(error);historyMessage(error,true);return;}
+ const name=$('historyName').value.trim().slice(0,80);if(!name){historyMessage('기록 이름을 입력해 주세요.',true);$('historyName').focus();return;}
+ const record={id:typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),name,savedAt:new Date().toISOString(),config:structuredClone(config)};
+ if(writeRecords([record,...savedRecords])){renderHistory();historyMessage('‘'+name+'’ 기록을 저장했습니다. 목록의 불러오기를 누르면 이 설정으로 돌아옵니다.');$('saveStatus').textContent='이름을 붙인 기록 저장 완료';}
+}
+$('runStress').addEventListener('click',runStress);
+$('rerollStress').addEventListener('click',()=>{readFields();config.stressSeed=(Number.isFinite(config.stressSeed)?config.stressSeed:42)%4294967295+1;$('stressSeed').value=config.stressSeed;return runStress();});
+$('stressTrace').addEventListener('change',()=>{if(stressResult&&stressResult.key===stressInputKey(config))renderStress();});
+$('exportStress').addEventListener('click',()=>{
+ if(!stressResult||stressRunning||stressResult.key!==stressInputKey(config))return;
+ const c=stressResult.config,key=$('stressTrace').value||'early',header=['경로','보충전략','난수번호','연도','은퇴연차','VTI주가수익률_%','SCHD주가수익률_%','세후배당_만원','세후이자_만원','생활비주식매도_만원','안전자산인출_만원','보충매도_만원','연말추가자산_만원','기말안전자산_만원','기말자산_만원','월평균현금흐름_만원','월평균현금흐름_현재가치_만원','목표월평균생활비_현재가치_만원','최대월부족액_현재가치_만원','기말안전자산_잔여생활비개월','최소안전자산_잔여생활비개월','고점미회복중매도_만원','첫생활비부족월'];
+ const data=stressRows().slice(c.retireYears+1).map(r=>[stressResult.cases[key].name,BUFFER_POLICIES[c.stressBufferPolicy],c.stressSeed,r.year,r.elapsed-c.retireYears,(r.vtiReturn*100).toFixed(4),(r.schdReturn*100).toFixed(4),...[r.netDividend,r.netInterest,r.stockSold,r.cashUsed,r.refillSold,r.extraAsset,r.cash,r.total,r.income/12,r.realIncome/12,r.realBudget/12,r.maxMonthlyGapReal].map(v=>v.toFixed(2)),r.cashMonths===null?'':r.cashMonths.toFixed(2),r.minCashMonths===null?'':r.minCashMonths.toFixed(2),r.downMarketSold.toFixed(2),r.firstGapMonth??'']);
+ download('은퇴계획_스트레스_'+key+'.csv','\ufeff'+[header,...data].map(row=>row.join(',')).join('\r\n'),'text/csv;charset=utf-8');$('stressStatus').textContent='선택 경로를 CSV로 저장했습니다. CSV의 자산·인출액은 명목금액이며 현재 가치 열은 별도입니다.';
+});
+fieldKeys.forEach(k=>{$(k).addEventListener('input',()=>update());});
+$('toggleSettings').addEventListener('click',()=>{const open=document.body.classList.toggle('settings-open');$('toggleSettings').textContent=open?'계산 설정 닫기':'계산 설정 열기';$('toggleSettings').setAttribute('aria-expanded',String(open));});
+$('allocationRows').addEventListener('input',e=>{if(!e.target.matches('[data-year]'))return;const i=Number(e.target.dataset.year);if(e.target.dataset.kind==='extra')config.extraAssets[i]=e.target.value===''?0:Number(e.target.value);else if(e.target.dataset.kind==='safe')config.safeAllocations[i]=e.target.value===''?null:Number(e.target.value);else config.allocations[i]=e.target.value===''?NaN:Number(e.target.value);update(false);if(!validateConfig(config)){const cells=e.target.closest('tr').querySelectorAll('td'),data=allocationCells(i);cells[5].textContent=decimal(100-stockPctFor(config,i));cells[6].textContent=data.percent;cells[7].innerHTML=data.money;}});
+$('applyRatio').addEventListener('click',()=>{const safe=$('bulkSafeRatio').value===''?NaN:Number($('bulkSafeRatio').value);if(!Number.isFinite(safe)||safe<0||safe>100){$('saveStatus').textContent='일괄 적용할 안전자산 비중은 0~100%로 입력하세요.';return;}config.allocations=Array(90).fill(Number($('bulkRatio').value));config.safeAllocations=Array(90).fill(safe);update();});
+$('budgetItemsList').addEventListener('input',e=>{const index=Number(e.target.dataset.budgetIndex),key=e.target.dataset.budgetKey;if(!Number.isInteger(index)||!config.budgetItems[index]||!['name','amount','frequency'].includes(key))return;config.budgetItems[index][key]=key==='amount'?(e.target.value===''?NaN:Number(e.target.value)):e.target.value;update(false);});
+$('budgetItemsList').addEventListener('click',e=>{const raw=e.target.dataset.budgetRemove;if(raw===undefined)return;const index=Number(raw);if(!Number.isInteger(index)||!config.budgetItems[index])return;config.budgetItems.splice(index,1);renderBudgetItems();update(false);});
+$('addBudgetItem').addEventListener('click',()=>{if(config.budgetItems.length>=100)return;config.budgetItems.push({name:'새 항목',amount:0,frequency:'monthly'});renderBudgetItems();update(false);});
+$('addManagementFee').addEventListener('click',()=>{if(config.budgetItems.length>=100||config.budgetItems.some(item=>item.name==='관리비'))return;config.budgetItems.push({name:'관리비',amount:30,frequency:'monthly'});renderBudgetItems();update(false);});
+$('applyBudgetTotal').addEventListener('click',()=>{const total=monthlyBudgetTotal(config.budgetItems);if(!config.budgetItems.length||!Number.isFinite(total)||total<0||total>100000)return;$('monthlyBudget').value=total;update();});
+$('saveConfig').addEventListener('click',()=>openHistory(true));
+$('loadConfig').addEventListener('click',()=>openHistory());
+$('closeHistory').addEventListener('click',()=>{$('historyPanel').classList.add('hidden');$('loadConfig').setAttribute('aria-expanded','false');$('loadConfig').focus();});
+$('historyForm').addEventListener('submit',saveRecord);
+$('downloadConfig').addEventListener('click',()=>{readFields();const error=validateConfig(config);if(error){setError(error);historyMessage(error,true);return;}download('은퇴계획_설정.json',JSON.stringify({version:1,...config},null,2),'application/json');historyMessage('현재 설정을 JSON으로 내보냈습니다.');});
+$('importConfig').addEventListener('click',()=>$('configFile').click());
+$('configFile').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const incoming=JSON.parse(await file.text()),candidate=normalizeConfig(incoming);const error=validateConfig(candidate);if(error)throw new Error(error);config=candidate;fillFields();update();openHistory();$('historyName').value=file.name.replace(/\.json$/i,'').slice(0,80);historyMessage('JSON 설정을 불러왔습니다. 이름을 확인하고 ‘현재 설정을 기록에 저장’을 누르면 목록에 보관됩니다.');$('saveStatus').textContent='JSON 설정 불러오기 완료';}catch(err){setError('설정 파일을 읽을 수 없습니다. '+err.message);historyMessage('JSON 설정을 읽을 수 없습니다. '+err.message,true);}e.target.value='';});
+$('exportCsv').addEventListener('click',()=>{readFields();if(validateConfig(config)){setError('입력을 확인한 뒤 CSV를 내보내세요.');return;}const header=['연도','나이','단계','기준','저축액_만원','연말추가자산_만원','세후배당_만원','세후이자_만원','추가인출_만원','미충당인출_만원','기말VTI_만원','기말SCHD_만원','기말안전자산_만원','기말총자산_만원','월현금흐름_만원','월현금흐름_현재가치기준_만원','목표월생활비_만원'];const data=projection.map(r=>[r.year,r.age,r.elapsed===0?'시작':r.working?'저축':'은퇴',config.realTerms?'현재구매력':'명목금액',...[r.saving,r.extraAsset||0,r.netDividend,r.netInterest,r.withdrawal,r.unfunded,r.vti,r.schd,r.cash,r.total,r.income/12].map(v=>displayValue(v,r).toFixed(2)),(r.income/12/r.deflator).toFixed(2),displayValue(r.budget/12,r).toFixed(2)]);download('은퇴계획_연도별.csv','\ufeff'+[header,...data].map(row=>row.join(',')).join('\r\n'),'text/csv;charset=utf-8');$('saveStatus').textContent='연도별 CSV를 저장했습니다.';});
+let previousConfig=null;
+function allowUndo(message){$('saveStatus').textContent=message+' ';const undo=document.createElement('button');undo.className='preset-link';undo.textContent='되돌리기';undo.addEventListener('click',()=>{if(previousConfig){config=previousConfig;previousConfig=null;fillFields();update();}});$('saveStatus').append(undo);}
+$('reset').addEventListener('click',()=>{previousConfig=structuredClone(config);config=structuredClone(DEFAULTS);fillFields();update();allowUndo('처음 계획으로 복원했습니다.');});
+$('retireExample').addEventListener('click',()=>{previousConfig=structuredClone(config);config={...structuredClone(DEFAULTS),initialVti:80000,initialSchd:20000,initialCash:0,deployCash:0,annualSaving:0,safeSavingPct:0,retireYears:0,horizon:20,monthlyBudget:200,allocations:Array(30).fill(80)};fillFields();update();allowUndo('가상 은퇴 예시를 적용했습니다.');});
+fillFields();update();renderHistory();
+
+</script>
+</body>
+</html>
