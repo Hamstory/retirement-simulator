@@ -16,6 +16,7 @@ export async function checkPrivacy() {
     [1990, 0, 0, 0, 0, 1200, 200],
     'Public starter data must remain fictional. Review privacy before changing defaults.',
   );
+  assert.equal(DEFAULTS.severanceAmount, 0);
   assert.deepEqual(DEFAULTS.budgetItems, []);
   assert.ok(DEFAULTS.extraAssets.every(value => value === 0));
   const problems = [];

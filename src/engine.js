@@ -5,6 +5,8 @@ DEFAULTS.budgetItems=[];
 DEFAULTS.allocations=Array(90).fill(80);
 DEFAULTS.safeAllocations=Array(90).fill(null);
 DEFAULTS.extraAssets=Array(90).fill(0);
+Object.assign(DEFAULTS,{severanceAmount:0,severanceTiming:'retirement',severanceYear:2026});
+Object.assign(DEFAULTS,{stressWithdrawalCap:false,stressMaxWithdrawalRate:5});
 Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,stressBufferFloor:1,stressRecoveryDrawdown:10,stressStockSale:'proportional',stressReturnMode:'anchored',stressCashCap:true});
 function normalizeConfig(incoming){
  const c={...structuredClone(DEFAULTS),...structuredClone(incoming)};
@@ -14,6 +16,9 @@ function normalizeConfig(incoming){
 function contributionFor(c,index){return Math.max(0,c.savingGrowthMode==='fixed'?c.annualSaving+c.savingGrowth*index:c.annualSaving*Math.pow(1+c.savingGrowth/100,index));}
 function safePctFor(c,index){return c.safeAllocations?.[index]??c.safeSavingPct;}
 function stockPctFor(c,index){return c.allocations[index]??c.allocations[c.allocations.length-1];}
+function severanceYearFor(c){return c.severanceTiming==='retirement'?c.startYear+c.retireYears:c.severanceYear;}
+function severanceFor(c,elapsed){return c.startYear+elapsed===severanceYearFor(c)?c.severanceAmount:0;}
+function extraAssetFor(c,elapsed){return (elapsed>0?(c.extraAssets?.[elapsed-1]??0):0)+severanceFor(c,elapsed);}
 function monthlyBudgetTotal(items){return items.reduce((sum,item)=>sum+item.amount/(item.frequency==='annual'?12:1),0);}
 function validateConfig(c){
  const finiteKeys=['startYear','birthYear','initialVti','initialSchd','initialCash','deployCash','annualSaving','savingGrowth','safeSavingPct','retireYears','horizon','inflation','annualWithdrawal','monthlyBudget','vtiPriceGrowth','schdPriceGrowth','vtiYield','schdYield','vtiDividendGrowth','schdDividendGrowth','cashYield','dividendTax','cashTax'];
@@ -32,6 +37,8 @@ function validateConfig(c){
  if(c.safeAllocations!==undefined&&(!Array.isArray(c.safeAllocations)||(c.safeAllocations.length<30||c.safeAllocations.length>90)||c.safeAllocations.some(v=>v!==null&&(!Number.isFinite(v)||v<0||v>100))))return '연도별 안전자산 비율은 0~100% 범위로 입력하세요.';
  if(c.budgetItems!==undefined&&(!Array.isArray(c.budgetItems)||c.budgetItems.length>100||c.budgetItems.some(item=>!item||typeof item.name!=='string'||item.name.length>80||!Number.isFinite(item.amount)||item.amount<0||item.amount>100000||!['monthly','annual'].includes(item.frequency))))return '생활비 항목은 100개 이하, 금액은 0~100,000만원 범위로 입력하세요.';
  if(c.extraAssets!==undefined&&(!Array.isArray(c.extraAssets)||(c.extraAssets.length<30||c.extraAssets.length>90)||c.extraAssets.some(v=>!Number.isFinite(v)||v<0||v>10000000)))return '연도별 추가 자산은 0~10,000,000만원 범위로 입력하세요.';
+ if(!Number.isFinite(c.severanceAmount)||c.severanceAmount<0||c.severanceAmount>10000000||!['retirement','year'].includes(c.severanceTiming))return '세후 퇴직금은 0~10,000,000만원, 수령 시점은 퇴직 연도 또는 직접 지정으로 입력하세요.';
+ if(c.severanceTiming==='year'&&(!Number.isInteger(c.severanceYear)||c.severanceYear<c.startYear||c.severanceYear>c.startYear+c.retireYears+c.horizon))return '퇴직금 수령 연도는 시작 연도부터 계산 마지막 연도 사이의 정수로 입력하세요.';
  return validateStress(c);
 }
 function validateStress(c){
@@ -43,16 +50,19 @@ function validateStress(c){
  if(c.stressBufferYears<0||c.stressBufferYears>10||c.stressBufferFloor<0||c.stressBufferFloor>c.stressBufferYears||c.stressRecoveryDrawdown<0||c.stressRecoveryDrawdown>100)return '안전자산 목표는 0~10년, 최소 잔액은 목표 이하, 회복 허용 하락률은 0~100%로 입력하세요.';
  if(!['none','annual','conditional'].includes(c.stressBufferPolicy)||!['proportional','vtiFirst'].includes(c.stressStockSale))return '안전자산 보충 전략과 주식 매도 순서를 확인하세요.';
  if(!['anchored','free'].includes(c.stressReturnMode)||typeof c.stressCashCap!=='boolean')return '시장 경로의 최종 수익률 방식과 안전자산 상한 설정을 확인하세요.';
+ if(typeof c.stressWithdrawalCap!=='boolean'||!Number.isFinite(c.stressMaxWithdrawalRate)||c.stressMaxWithdrawalRate<0||c.stressMaxWithdrawalRate>100)return '생활비 인출률 상한은 0~100%로 입력하세요.';
  return '';
 }
-function simulate(c,marketPath=[]){
+function simulate(c,marketPath=[],endElapsed=c.retireYears+c.horizon){
  const validation=validateConfig(c);if(validation)throw new Error(validation);
  const rows=[];const alloc0=c.allocations[0]/100;
  let vShares=c.initialVti+c.deployCash*alloc0,sShares=c.initialSchd+c.deployCash*(1-alloc0),cash=c.initialCash-c.deployCash;
  let vp=1,sp=1,vd=c.vtiYield/100,sd=c.schdYield/100;
+ const initialSeverance=severanceFor(c,0),initialSafe=initialSeverance*safePctFor(c,0)/100;
+ cash+=initialSafe;vShares+=(initialSeverance-initialSafe)*alloc0;sShares+=(initialSeverance-initialSafe)*(1-alloc0);
  const valuation=(elapsed)=>({elapsed,year:c.startYear+elapsed,age:c.startYear+elapsed-c.birthYear,vti:vShares*vp,schd:sShares*sp,cash,total:vShares*vp+sShares*sp+cash,deflator:Math.pow(1+c.inflation/100,elapsed)});
- rows.push({...valuation(0),working:c.retireYears>0,saving:0,vtiContribution:0,schdContribution:0,safeContribution:0,netDividend:0,netInterest:0,grossDividend:0,withdrawal:0,stockSold:0,cashUsed:0,requestedWithdrawal:0,unfunded:0,income:0,budget:c.monthlyBudget*12});
- for(let t=1;t<=c.retireYears+c.horizon;t++){
+ rows.push({...valuation(0),working:c.retireYears>0,saving:0,extraAsset:initialSeverance,severance:initialSeverance,vtiContribution:0,schdContribution:0,safeContribution:0,netDividend:0,netInterest:0,grossDividend:0,withdrawal:0,stockSold:0,cashUsed:0,requestedWithdrawal:0,unfunded:0,income:0,budget:c.monthlyBudget*12});
+ for(let t=1;t<=Math.min(endElapsed,c.retireYears+c.horizon);t++){
   const working=t<=c.retireYears;
   const market=marketPath[t-1]||{},vReturn=market.vtiReturn??c.vtiPriceGrowth/100,sReturn=market.schdReturn??c.schdPriceGrowth/100,vFactor=market.vtiDividendFactor??1,sFactor=market.schdDividendFactor??1;
   if(![vReturn,sReturn,vFactor,sFactor].every(Number.isFinite)||vReturn<=-1||sReturn<=-1||vFactor<0||vFactor>1||sFactor<0||sFactor>1)throw new Error('시장 경로의 수익률 또는 배당 삭감 값을 확인하세요.');
@@ -91,9 +101,9 @@ function simulate(c,marketPath=[]){
    income=c.withdrawMode==='budget'?Math.min(naturalIncome,budget)+withdrawal:naturalIncome+withdrawal;
    if(c.withdrawMode==='budget')cash+=Math.max(0,naturalIncome-budget);
   }
-  const extraAsset=c.extraAssets?.[t-1]??0,extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
+  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
   cash+=extraSafe;vShares+=extraVti/vp;sShares+=(extraAsset-extraSafe-extraVti)/sp;
-  rows.push({...valuation(t),working,saving,extraAsset,vtiContribution,schdContribution,safeContribution,netDividend,netInterest,grossDividend,withdrawal,stockSold,cashUsed,requestedWithdrawal,unfunded,income,budget,marketMonths:market.months,vtiReturn:vReturn,schdReturn:sReturn,vtiDividendFactor:vFactor,schdDividendFactor:sFactor});
+  rows.push({...valuation(t),working,saving,extraAsset,severance,vtiContribution,schdContribution,safeContribution,netDividend,netInterest,grossDividend,withdrawal,stockSold,cashUsed,requestedWithdrawal,unfunded,income,budget,marketMonths:market.months,vtiReturn:vReturn,schdReturn:sReturn,vtiDividendFactor:vFactor,schdDividendFactor:sFactor});
   vd*=1+c.vtiDividendGrowth/100;sd*=1+c.schdDividendGrowth/100;
  }
  return rows;
@@ -123,7 +133,7 @@ function monthlyMarketPath(c,random){
 function futureYearBudget(c,elapsed){let sum=0;for(let m=1;m<=12;m++)sum+=c.monthlyBudget*Math.pow(1+c.inflation/100,elapsed+m/12);return sum;}
 function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
  const validation=validateConfig(c);if(validation)throw new Error(validation);
- const rows=simulate({...c,horizon:1},marketPath).slice(0,c.retireYears+1);
+ const rows=simulate(c,marketPath,c.retireYears);
  let vp=1,sp=1,vd=c.vtiYield/100,sd=c.schdYield/100;
  for(let i=0;i<c.retireYears;i++){const p=marketPath[i]||{};vp*=1+(p.vtiReturn??c.vtiPriceGrowth/100);sp*=1+(p.schdReturn??c.schdPriceGrowth/100);vd*=(p.vtiDividendFactor??1)*(1+c.vtiDividendGrowth/100);sd*=(p.schdDividendFactor??1)*(1+c.schdDividendGrowth/100);}
  const ret=rows[rows.length-1],referenceV=vp,referenceS=sp,stockWeight=ret.vti+ret.schd>0?ret.vti/(ret.vti+ret.schd):stockPctFor(c,0)/100;
@@ -135,18 +145,19 @@ function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
   const sold=Math.min(v+s,needed),keep=v+s>0?Math.max(0,1-sold/(v+s)):1;vShares*=keep;sShares*=keep;return sold;
  };
  for(let t=c.retireYears+1;t<=c.retireYears+c.horizon;t++){
+  const withdrawalBase=vShares*vp+sShares*sp+cash,spendingCap=c.stressWithdrawalCap?withdrawalBase*c.stressMaxWithdrawalRate/100:null;
   const p=marketPath[t-1]||{},annualV=p.vtiReturn??c.vtiPriceGrowth/100,annualS=p.schdReturn??c.schdPriceGrowth/100;
   const months=p.months||Array.from({length:12},()=>({vtiReturn:Math.expm1(Math.log1p(annualV)/12),schdReturn:Math.expm1(Math.log1p(annualS)/12)}));
   if(months.length!==12)throw new Error('월별 시장 경로는 매년 12개여야 합니다.');
   let netDividend=0,grossDividend=0,netInterest=0,requestedWithdrawal=0,withdrawal=0,stockSold=0,cashUsed=0,unfunded=0,income=0,budget=0,livingGap=0,maxMonthlyGapReal=0,firstGapMonth=null,firstUnfundedMonth=null,refillSold=0,downMarketSold=0,minCashMonths=Infinity;
-  let cutV=false,cutS=false,hadEmpty=false,ytdV=1,ytdS=1,realIncome=0,realBudget=0,realNaturalIncome=0,realGap=0;const yearStartIndex=indexValue();
+  let cutV=false,cutS=false,hadEmpty=false,ytdV=1,ytdS=1,realIncome=0,realBudget=0,realNaturalIncome=0,realGap=0,capReduction=0,monthsNeedingWork=0;const yearStartIndex=indexValue();
   for(let m=1;m<=12;m++){
    const mr=months[m-1];if(![mr.vtiReturn,mr.schdReturn].every(r=>Number.isFinite(r)&&r>-1))throw new Error('월별 주가 수익률을 확인하세요.');
    const elapsed=t-1+m/12,deflator=Math.pow(1+c.inflation/100,elapsed),monthlyBudget=c.monthlyBudget*deflator,gross=(vShares*vd+sShares*sd)/12,dividend=gross*(1-c.dividendTax/100),interest=cash*c.cashYield/100/12*(1-c.cashTax/100);
    vp*=1+mr.vtiReturn;sp*=1+mr.schdReturn;ytdV*=1+mr.vtiReturn;ytdS*=1+mr.schdReturn;peakIndex=Math.max(peakIndex,indexValue());
-   const natural=dividend+interest,request=c.withdrawMode==='budget'?Math.max(0,monthlyBudget-natural):c.annualWithdrawal/12*(c.inflateWithdrawal?Math.pow(1+c.inflation/100,t-c.retireYears-1+(m-1)/12):1);
-   const fromCash=Math.min(cash,request);cash-=fromCash;const fromStock=sell(Math.max(0,request-fromCash)),missing=Math.max(0,request-fromCash-fromStock),paid=(c.withdrawMode==='budget'?Math.min(natural,monthlyBudget):natural)+fromCash+fromStock,gap=Math.max(0,monthlyBudget-paid);
-   if(c.withdrawMode==='budget')cash+=Math.max(0,natural-monthlyBudget);
+   const natural=dividend+interest,planned=c.withdrawMode==='budget'?monthlyBudget:natural+c.annualWithdrawal/12*(c.inflateWithdrawal?Math.pow(1+c.inflation/100,t-c.retireYears-1+(m-1)/12):1),allowed=spendingCap===null?planned:Math.min(planned,spendingCap/12),naturalUsed=Math.min(natural,allowed),request=Math.max(0,allowed-naturalUsed);
+   const fromCash=Math.min(cash,request);cash-=fromCash;const fromStock=sell(Math.max(0,request-fromCash)),missing=Math.max(0,request-fromCash-fromStock),paid=naturalUsed+fromCash+fromStock,gap=Math.max(0,monthlyBudget-paid);
+   cash+=Math.max(0,natural-naturalUsed);capReduction+=Math.max(0,planned-allowed);if(gap>.00001)monthsNeedingWork++;
    if(indexValue()<peakIndex*(1-1e-8))downMarketSold+=fromStock;
    if(gap>.00001&&firstGapMonth===null)firstGapMonth=m;if(missing>.00001&&firstUnfundedMonth===null)firstUnfundedMonth=m;
    netDividend+=dividend;grossDividend+=gross;netInterest+=interest;requestedWithdrawal+=request;withdrawal+=fromCash+fromStock;stockSold+=fromStock;cashUsed+=fromCash;unfunded+=missing;income+=paid;budget+=monthlyBudget;livingGap+=gap;maxMonthlyGapReal=Math.max(maxMonthlyGapReal,gap/deflator);
@@ -159,7 +170,7 @@ function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
    vd*=Math.pow(1+c.vtiDividendGrowth/100,1/12);sd*=Math.pow(1+c.schdDividendGrowth/100,1/12);
   }
   // Net one-off receipts arrive at year-end, never funding an earlier month's shortfall.
-  const extraAsset=c.extraAssets?.[t-1]??0,extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
+  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
   cash+=extraSafe;vShares+=extraVti/vp;sShares+=(extraAsset-extraSafe-extraVti)/sp;
   const nextBudget=futureYearBudget(c,t),cashTarget=nextBudget*c.stressBufferYears,cashFloor=nextBudget*c.stressBufferFloor,healthy=indexValue()>=yearStartIndex*(1-1e-10)&&indexValue()>=peakIndex*(1-c.stressRecoveryDrawdown/100)*(1-1e-10);
   const replenishTo=policy==='annual'?cashTarget:policy==='conditional'?(healthy?cashTarget:cashFloor):0;
@@ -167,7 +178,7 @@ function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
   const cashReinvested=c.stressCashCap?Math.max(0,cash-cashTarget):0;
   if(cashReinvested>0){const ratio=stockPctFor(c,t-1)/100;cash-=cashReinvested;vShares+=cashReinvested*ratio/vp;sShares+=cashReinvested*(1-ratio)/sp;}
   const deflator=Math.pow(1+c.inflation/100,t),nextMonthly=c.monthlyBudget*Math.pow(1+c.inflation/100,t+1/12);
-  rows.push({elapsed:t,year:c.startYear+t,age:c.startYear+t-c.birthYear,working:false,saving:0,extraAsset,vtiContribution:0,schdContribution:0,safeContribution:0,vti:vShares*vp,schd:sShares*sp,cash,total:vShares*vp+sShares*sp+cash,deflator,netDividend,grossDividend,netInterest,requestedWithdrawal,withdrawal,stockSold,cashUsed,unfunded,income,budget,realIncome,realBudget,realNaturalIncome,realGap,livingGap,maxMonthlyGapReal,firstGapMonth,firstUnfundedMonth,hadEmpty,hadLivingGap:firstGapMonth!==null,hadUnfunded:firstUnfundedMonth!==null,refillSold,cashReinvested,marketMonths:months,downMarketSold,minCashMonths:Number.isFinite(minCashMonths)?minCashMonths:null,cashMonths:nextMonthly>0?cash/nextMonthly:null,cashTarget,cashFloor,marketDrawdown:1-indexValue()/peakIndex,refillEligible:healthy,vtiReturn:ytdV-1,schdReturn:ytdS-1});
+  rows.push({elapsed:t,year:c.startYear+t,age:c.startYear+t-c.birthYear,working:false,saving:0,extraAsset,severance,vtiContribution:0,schdContribution:0,safeContribution:0,vti:vShares*vp,schd:sShares*sp,cash,total:vShares*vp+sShares*sp+cash,deflator,netDividend,grossDividend,netInterest,requestedWithdrawal,withdrawal,stockSold,cashUsed,unfunded,income,budget,realIncome,realBudget,realNaturalIncome,realGap,livingGap,maxMonthlyGapReal,firstGapMonth,firstUnfundedMonth,hadEmpty,hadLivingGap:firstGapMonth!==null,hadUnfunded:firstUnfundedMonth!==null,withdrawalBase,spendingCap,spendingRate:withdrawalBase>0?income/withdrawalBase*100:0,capReduction,monthsNeedingWork,workNeeded:livingGap,realWorkNeeded:realGap,refillSold,cashReinvested,marketMonths:months,downMarketSold,minCashMonths:Number.isFinite(minCashMonths)?minCashMonths:null,cashMonths:nextMonthly>0?cash/nextMonthly:null,cashTarget,cashFloor,marketDrawdown:1-indexValue()/peakIndex,refillEligible:healthy,vtiReturn:ytdV-1,schdReturn:ytdS-1});
  }
  return rows;
 }
@@ -219,4 +230,4 @@ function finishStress(acc,c,runner=simulate){
 }
 
 // @single-file-exports
-export { DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };
+export { DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };

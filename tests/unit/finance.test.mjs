@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULTS, simulate, simulateMonthly, normalizeConfig, validateConfig, contributionFor,
-  monthlyBudgetTotal, stressRandom, monthlyMarketPath, crashMarketPath, stressPathSummary, near,
+  monthlyBudgetTotal, stressRandom, monthlyMarketPath, crashMarketPath, stressPathSummary, severanceYearFor, near,
 } from '../helpers/engine.mjs';
 
 const base = () => structuredClone(DEFAULTS);
@@ -214,4 +214,71 @@ test('TC-032 기존 설정은 새 경로·상한 기본값으로 확장되고 �
   const c=normalizeConfig(old);assert.equal(c.stressCashCap,true);assert.equal(c.stressReturnMode,'anchored');
   near(simulateMonthly({...fixture(),initialCash:1000,horizon:1,stressCashCap:false},[],'none')[1].cash,880);
   for (const patch of [{stressReturnMode:'wrong'},{stressCashCap:'true'}]) assert.ok(validateConfig({...base(),...patch}));
+});
+test('TC-033 퇴직금과 기타 추가 자산은 수령 연말에 각각 한 번 반영된다', () => {
+  const c={...fixture(),initialVti:0,initialCash:0,retireYears:2,annualSaving:100,monthlyBudget:0,severanceAmount:1000};
+  c.extraAssets[1]=300;c.safeAllocations[1]=40;
+  for(const rows of [simulate(c),simulateMonthly(c,[],'none')]){
+    near(rows[1].severance,0);near(rows[2].extraAsset,1300);near(rows[2].severance,1000);
+    near(rows[2].vti,736);near(rows[2].schd,184);near(rows[2].cash,580);near(rows.at(-1).total,1500);
+    near(rows.reduce((sum,r)=>sum+r.severance,0),1000);
+  }
+  const growing={...c,annualSaving:0,vtiPriceGrowth:12,schdPriceGrowth:8};
+  near(simulate(growing)[2].total,1300);near(simulateMonthly(growing)[2].total,1300);
+  assert.equal(c.extraAssets[1],300);
+});
+test('TC-034 즉시 퇴직 또는 시작 연도 수령은 초기 자산에 반영된다', () => {
+  for(const patch of [{retireYears:0},{retireYears:2,severanceTiming:'year',severanceYear:2026}]){
+    const c={...fixture(),initialVti:0,initialCash:0,monthlyBudget:0,severanceAmount:800,safeSavingPct:25,...patch};c.allocations[0]=60;
+    for(const rows of [simulate(c),simulateMonthly(c)]){
+      near(rows[0].vti,360);near(rows[0].schd,240);near(rows[0].cash,200);near(rows[0].extraAsset,800);
+      near(rows.reduce((sum,r)=>sum+r.severance,0),800);near(rows.at(-1).total,800);
+    }
+  }
+});
+test('TC-035 늦게 받는 퇴직금은 이전 생활비 부족을 메우지 않는다', () => {
+  const c={...fixture(),initialVti:0,initialCash:0,horizon:4,severanceAmount:1000,severanceTiming:'year',severanceYear:2029,safeSavingPct:100};
+  const rows=simulateMonthly(c,[],'none');
+  near(rows[3].income,0);near(rows[3].cash,1000);near(rows[3].severance,1000);near(rows[4].cash,880);near(rows[4].income,120);
+  assert.equal(rows[3].firstGapMonth,1);assert.equal(stressPathSummary(rows,c).firstUnfunded.year,2027);
+  const capped=simulateMonthly({...c,stressCashCap:true},[],'none')[3];near(capped.cash,360);near(capped.cashReinvested,640);near(capped.total,1000);near(capped.income,0);
+});
+test('TC-036 퇴직금 설정은 이전 기록과 호환되고 유효 범위를 검사한다', () => {
+  const old=base();for(const key of ['severanceAmount','severanceTiming','severanceYear'])delete old[key];
+  const migrated=normalizeConfig(old);assert.equal(migrated.severanceAmount,0);near(simulate(migrated).at(-1).total,simulate(base()).at(-1).total);
+  assert.equal(severanceYearFor({...base(),retireYears:4}),2030);
+  assert.equal(severanceYearFor({...base(),retireYears:8}),2034);
+  for(const patch of [{severanceAmount:-1},{severanceAmount:Infinity},{severanceAmount:'100'},{severanceTiming:'wrong'},
+    {severanceTiming:'year',severanceYear:2025},{severanceTiming:'year',severanceYear:2027.5},{severanceTiming:'year',severanceYear:2300}])assert.ok(validateConfig({...base(),...patch}));
+  const linked={...base(),startYear:2030,retireYears:2,severanceAmount:500};assert.equal(validateConfig(linked),'');near(simulate(linked)[2].severance,500);
+});
+test('TC-037 인출 상한은 배당·이자 포함 생활비 총액을 연초 자산 비율 이하로 제한한다', () => {
+  const c={...fixture(),initialVti:10000,initialCash:0,monthlyBudget:100,stressWithdrawalCap:true,stressMaxWithdrawalRate:5};
+  const rows=simulateMonthly(c,[],'none');
+  near(rows[1].income,500);near(rows[1].total,9500);near(rows[1].workNeeded,700);near(rows[1].capReduction,700);near(rows[1].unfunded,0);
+  assert.equal(rows[1].monthsNeedingWork,12);assert.equal(rows[1].hadLivingGap,true);assert.equal(rows[1].hadUnfunded,false);
+  for(const r of rows.slice(1)){assert.ok(r.income<=r.spendingCap+1e-7);near(r.spendingRate,5);near(r.spendingCap,r.withdrawalBase*.05);}
+});
+test('TC-038 상한을 넘는 배당·이자는 소비하지 않고 자산에 보존한다', () => {
+  const c={...fixture(),initialVti:10000,initialCash:0,monthlyBudget:100,horizon:1,vtiYield:12,dividendTax:0,stressWithdrawalCap:true};
+  let r=simulateMonthly(c,[],'none')[1];near(r.netDividend,1200);near(r.income,500);near(r.cash,700);near(r.total,10700);near(r.stockSold,0);
+  r=simulateMonthly({...c,initialVti:0,initialCash:10000,vtiYield:0,cashYield:12,cashTax:0},[],'none')[1];
+  near(r.income,500);near(r.total,10000+r.netInterest-r.income);assert.ok(r.netInterest>500);near(r.withdrawal,0);
+  r=simulateMonthly({...c,vtiYield:0,horizon:2},[],'annual')[1];near(r.income,500);near(r.spendingRate,5);near(r.refillSold,3600);near(r.total,9500);
+});
+test('TC-039 인출 상한은 매년 재계산하며 연말 퇴직금은 다음 해 기준에 반영한다', () => {
+  const c={...fixture(),initialVti:0,initialCash:0,horizon:4,severanceAmount:1000,severanceTiming:'year',severanceYear:2028,safeSavingPct:100,stressWithdrawalCap:true};c.extraAssets[2]=500;
+  const rows=simulateMonthly(c,[],'none');near(rows[2].spendingCap,0);near(rows[2].income,0);near(rows[2].total,1000);
+  near(rows[3].withdrawalBase,1000);near(rows[3].income,50);near(rows[3].total,1450);near(rows[4].spendingCap,72.5);near(rows[4].income,72.5);
+  const immediate={...c,severanceTiming:'retirement'};near(simulateMonthly(immediate,[],'none')[1].spendingCap,50);
+});
+test('TC-040 상한 해제·정액 인출·목표 충당·기존 설정을 구분한다', () => {
+  const old=base();delete old.stressWithdrawalCap;delete old.stressMaxWithdrawalRate;const migrated=normalizeConfig(old);assert.equal(migrated.stressWithdrawalCap,false);assert.equal(migrated.stressMaxWithdrawalRate,5);
+  const c={...fixture(),initialVti:1000,initialCash:0,horizon:1,withdrawMode:'extra',annualWithdrawal:120,stressWithdrawalCap:true};
+  let r=simulateMonthly(c,[],'none')[1];near(r.income,50);near(r.workNeeded,70);near(r.unfunded,0);
+  r=simulateMonthly({...c,monthlyBudget:1},[],'none')[1];near(r.capReduction,70);near(r.workNeeded,0);assert.equal(r.monthsNeedingWork,0);
+  r=simulateMonthly({...c,stressWithdrawalCap:false},[],'none')[1];near(r.income,120);near(r.capReduction,0);assert.equal(r.spendingCap,null);
+  r=simulateMonthly({...c,stressMaxWithdrawalRate:0},[],'none')[1];near(r.total,1000);near(r.income,0);
+  const months=Array.from({length:12},(_,i)=>({vtiReturn:i===0?-.9999:0,schdReturn:0}));r=simulateMonthly(c,[{vtiReturn:-.9999,schdReturn:0,months}],'none')[1];assert.ok(r.unfunded>0);assert.ok(r.workNeeded>r.capReduction);assert.equal(r.hadEmpty,true);
+  for(const patch of [{stressMaxWithdrawalRate:-1},{stressMaxWithdrawalRate:101},{stressMaxWithdrawalRate:NaN},{stressWithdrawalCap:'true'}])assert.ok(validateConfig({...base(),...patch}));
 });
