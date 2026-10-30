@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULTS, simulate, simulateMonthly, normalizeConfig, validateConfig, contributionFor,
-  monthlyBudgetTotal, stressRandom, monthlyMarketPath, stressPathSummary, near,
+  monthlyBudgetTotal, stressRandom, monthlyMarketPath, crashMarketPath, stressPathSummary, near,
 } from '../helpers/engine.mjs';
 
 const base = () => structuredClone(DEFAULTS);
@@ -10,7 +10,7 @@ const fixture = () => ({ ...base(), initialVti: 1000, initialSchd: 0, initialCas
   deployCash: 0, retireYears: 0, horizon: 3, annualSaving: 0,
   vtiPriceGrowth: 0, schdPriceGrowth: 0, vtiYield: 0, schdYield: 0,
   vtiDividendGrowth: 0, schdDividendGrowth: 0, cashYield: 0,
-  inflation: 0, monthlyBudget: 10, withdrawMode: 'budget' });
+  inflation: 0, monthlyBudget: 10, stressCashCap: false, withdrawMode: 'budget' });
 
 test('TC-001 초기 현금 이동은 총자산을 늘리지 않는다', () => {
   const c = base(), r = simulate(c)[0];
@@ -137,4 +137,81 @@ test('TC-024 잘못된 비중·추가 자산·보충 조건을 거부한다', ()
     { stressBufferFloor: 4, stressBufferYears: 3 }, { stressCorr: 101 }, { annualSaving: NaN }]) {
     assert.ok(validateConfig({ ...base(), ...patch }));
   }
+});
+const compound = (path, key) => path.reduce((value, row) => value * (1 + row[key]), 1);
+test('TC-025 최종 연복리 고정 경로는 ETF별 설정 주가에 도달한다', () => {
+  for (const scope of ['all', 'retirement']) for (const seed of [1, 42, 937]) {
+    const c = { ...base(), retireYears: 4, horizon: 8, stressScope: scope, vtiPriceGrowth: 7, schdPriceGrowth: -2 };
+    const path = monthlyMarketPath(c, stressRandom(seed));
+    for (const [key, rate] of [['vtiReturn', .07], ['schdReturn', -.02]]) {
+      near(compound(path, key), (1 + rate) ** 12);
+      near(compound(path.flatMap(r => r.months), key), (1 + rate) ** 12);
+      if (scope === 'retirement') near(compound(path.slice(0, 4), key), (1 + rate) ** 4);
+    }
+  }
+});
+test('TC-026 고정된 최종값 사이의 월별 경로는 무작위로 달라진다', () => {
+  const c = { ...base(), retireYears: 0, horizon: 12 };
+  const a = monthlyMarketPath(c, stressRandom(42)), b = monthlyMarketPath(c, stressRandom(43));
+  assert.notDeepEqual(a[0].months, b[0].months);
+  near(compound(a, 'vtiReturn'), compound(b, 'vtiReturn'));
+  assert.ok(a.flatMap(r => r.months).some(r => r.vtiReturn < 0));
+  assert.ok(a.flatMap(r => r.months).some(r => r.vtiReturn > 0));
+  const portfolio={...fixture(),horizon:12,initialVti:10000,initialCash:0,monthlyBudget:0};
+  near(simulateMonthly(portfolio,a,'none').at(-1).total,simulateMonthly(portfolio,b,'none').at(-1).total);
+  const spending={...portfolio,monthlyBudget:10};
+  assert.ok(Math.abs(simulateMonthly(spending,a,'none').at(-1).total-simulateMonthly(spending,b,'none').at(-1).total)>1);
+  for (const rho of [-100, 100]) {
+    const settings = { ...c, stressCorr: rho };
+    for (const m of monthlyMarketPath(settings, stressRandom(42)).flatMap(r => r.months)) {
+      const zV=(Math.log1p(m.vtiReturn)-Math.log1p(c.vtiPriceGrowth/100)/12)/c.stressVtiVol;
+      const zS=(Math.log1p(m.schdReturn)-Math.log1p(c.schdPriceGrowth/100)/12)/c.stressSchdVol;
+      near(zV, zS * rho / 100);
+    }
+  }
+});
+test('TC-027 자유 경로의 최종 수익률은 달라지고 변동성 0은 기준선과 같다', () => {
+  const c={...base(),retireYears:0,horizon:5,stressReturnMode:'free'};
+  assert.notEqual(compound(monthlyMarketPath(c,stressRandom(42)),'vtiReturn'),compound(monthlyMarketPath(c,stressRandom(43)),'vtiReturn'));
+  for (const mode of ['free','anchored']) {
+    const zero={...c,stressReturnMode:mode,stressVtiVol:0,stressSchdVol:0};
+    near(compound(monthlyMarketPath(zero,stressRandom(42)),'vtiReturn'),1.03**5);
+  }
+});
+test('TC-028 초반·후반 급락 뒤 회복 경로의 최종 주가 수익률이 같다', () => {
+  for (const horizon of [1,3,20]) for (const late of [false,true]) {
+    const c={...base(),retireYears:2,horizon,vtiPriceGrowth:6,schdPriceGrowth:2};
+    const path=crashMarketPath(c,late), months=path.slice(2).flatMap(r=>r.months);
+    near(compound(path,'vtiReturn'),1.06**(horizon+2));near(compound(path,'schdReturn'),1.02**(horizon+2));
+    const first=months.findIndex(r=>r.vtiReturn<0),last=months.findLastIndex(r=>r.vtiReturn<0);
+    assert.ok(first>=0 && last<months.length-1);assert.ok(months[last+1].vtiReturn>.06/12);
+    const flat=crashMarketPath({...c,stressCrash:0},late);
+    flat.forEach(r=>near(r.vtiReturn,.06));
+  }
+});
+test('TC-029 연말 안전자산 상한은 세 보충 전략과 추가 자산에 적용된다', () => {
+  const c={...fixture(),stressCashCap:true,initialCash:4000,inflation:2};c.extraAssets[1]=2000;c.safeAllocations[1]=100;
+  for (const policy of ['none','annual','conditional']) {
+    let expected=5000;
+    for (const r of simulateMonthly(c,[],policy).slice(1)) {
+      expected+=r.extraAsset-r.income;near(r.total,expected);assert.ok(r.cash<=r.cashTarget+1e-7);
+    }
+  }
+});
+test('TC-030 안전자산 초과분은 해당 연도 주식 비율로 마지막 해에도 투자한다', () => {
+  const c={...fixture(),stressCashCap:true,initialVti:0,initialCash:1000,horizon:1};c.allocations[0]=25;
+  const r=simulateMonthly(c,[],'annual')[1];
+  near(r.cashReinvested,520);near(r.vti,130);near(r.schd,390);near(r.cash,360);near(r.total,880);near(r.income,120);near(r.refillSold,0);
+});
+test('TC-031 생활비 0의 상한과 초과 배당도 자산을 없애지 않는다', () => {
+  const c={...fixture(),stressCashCap:true,monthlyBudget:0,horizon:1,vtiYield:12,dividendTax:0};
+  for (const policy of ['none','annual','conditional']) {
+    const r=simulateMonthly(c,[],policy)[1];near(r.cash,0);near(r.cashReinvested,220);near(r.total,1220);near(r.income,0);near(r.netDividend,120);
+  }
+});
+test('TC-032 기존 설정은 새 경로·상한 기본값으로 확장되고 잘못된 옵션을 거부한다', () => {
+  const old=base();delete old.stressCashCap;delete old.stressReturnMode;
+  const c=normalizeConfig(old);assert.equal(c.stressCashCap,true);assert.equal(c.stressReturnMode,'anchored');
+  near(simulateMonthly({...fixture(),initialCash:1000,horizon:1,stressCashCap:false},[],'none')[1].cash,880);
+  for (const patch of [{stressReturnMode:'wrong'},{stressCashCap:'true'}]) assert.ok(validateConfig({...base(),...patch}));
 });

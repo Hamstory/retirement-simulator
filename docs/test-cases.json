@@ -240,6 +240,86 @@
     "expected": "모두 오류 메시지를 반환한다."
   },
   {
+    "id": "TC-025",
+    "title": "최종 연복리 고정 경로는 ETF별 설정 주가에 도달한다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "여러 난수·전 구간 또는 은퇴 후 변동·서로 다른 주가 상승률을 설정한다.",
+    "steps": "월별·연별 수익률을 복리로 곱해 ETF별 최종 주가를 확인한다.",
+    "expected": "모든 경로가 설정 연복리의 최종 주가와 일치하며 은퇴 전 변동 제외 구간은 그대로다."
+  },
+  {
+    "id": "TC-026",
+    "title": "고정된 최종값 사이의 월별 경로는 무작위로 달라진다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "최종 연복리 고정 모드에 변동성과 ETF 상관을 설정한다.",
+    "steps": "다른 난수의 중간 월 주가, 상승·하락 월, 완전 양·음 상관을 비교한다.",
+    "expected": "중간 경로는 달라도 최종 주가는 같고, 표준화 로그 충격 상관이 유지된다."
+  },
+  {
+    "id": "TC-027",
+    "title": "자유 경로의 최종 수익률은 달라지고 변동성 0은 기준선과 같다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "자유 모드와 최종 고정 모드에 여러 난수를 사용한다.",
+    "steps": "자유 경로 최종값을 비교하고 두 모드의 변동성 0을 계산한다.",
+    "expected": "자유 경로의 최종값은 다르며 두 모드 모두 변동성 0에서 설정 주가가 된다."
+  },
+  {
+    "id": "TC-028",
+    "title": "초반·후반 급락 뒤 회복 경로의 최종 주가 수익률이 같다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "최종 고정 모드·1년 또는 여러 해 은퇴·급락 기간을 설정한다.",
+    "steps": "급락 다음 회복 구간과 ETF별 최종 복리 주가를 확인한다.",
+    "expected": "급락·회복 구간을 확보하고 초반·후반 모두 설정 수익률에 도달한다. 급락 0은 기준선이다."
+  },
+  {
+    "id": "TC-029",
+    "title": "연말 안전자산 상한은 세 보충 전략과 추가 자산에 적용된다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "안전자산 초과분 재투자·물가·연말 추가 자산을 설정한다.",
+    "steps": "세 전략의 각 은퇴 연말 잔액과 상한을 비교하고 무수익 자금 보존을 확인한다.",
+    "expected": "기말 현금은 목표 이하여야 하며 초과분은 재투자되고 생활비나 수익에 중복 계산되지 않는다."
+  },
+  {
+    "id": "TC-030",
+    "title": "안전자산 초과분은 해당 연도 주식 비율로 마지막 해에도 투자한다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "단일 은퇴연도·과다 현금·VTI 25 SCHD 75 비율을 설정한다.",
+    "steps": "마지막 연말 목표 초과분과 ETF 이동액, 생활비 수입을 확인한다.",
+    "expected": "초과분이 25 대 75로 이동하며 마지막 해 보충 매도 없이 총자산과 생활비가 보존된다."
+  },
+  {
+    "id": "TC-031",
+    "title": "생활비 0의 상한과 초과 배당도 자산을 없애지 않는다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "목표 생활비 0·양의 배당·초기 현금을 설정한다.",
+    "steps": "세 전략의 기말 현금과 주식·배당·재투자 합계를 확인한다.",
+    "expected": "현금 상한 0을 맞추되 모든 현금·초과 배당은 주식으로 옮겨 보존한다."
+  },
+  {
+    "id": "TC-032",
+    "title": "기존 설정은 새 경로·상한 기본값으로 확장되고 잘못된 옵션을 거부한다",
+    "priority": "P0",
+    "mode": "auto",
+    "file": "tests/unit/finance.test.mjs",
+    "precondition": "새 필드가 없는 기존 설정과 잘못된 새 옵션을 준비한다.",
+    "steps": "정규화·상한 해제·검증을 실행한다.",
+    "expected": "기존 값은 유지되고 새 기본값이 채워진다. 상한 해제 시 현금을 유지하고 잘못된 옵션은 거부한다."
+  },
+  {
     "id": "REG-001",
     "title": "기존 연간 계산과 인출 우선순위",
     "priority": "P0",
@@ -366,7 +446,7 @@
     "mode": "long",
     "file": "tests/long-run.test.mjs",
     "precondition": "기본 설정·저축 10년·은퇴 60년·난수 번호 42이다.",
-    "steps": "1000개 월별 경로 각각에 세 보충 전략을 적용한다.",
+    "steps": "1000개 월별 경로 각각에 세 보충 전략을 적용한다. 최종 고정·자유 모드를 번갈아 사용하고 매 은퇴 연말 안전자산 상한도 확인한다.",
     "expected": "모든 경로에서 행 수 71개이며 자산·수입·미충당 금액이 유한한 0 이상이다."
   },
   {

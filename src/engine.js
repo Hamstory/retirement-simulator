@@ -5,7 +5,7 @@ DEFAULTS.budgetItems=[];
 DEFAULTS.allocations=Array(90).fill(80);
 DEFAULTS.safeAllocations=Array(90).fill(null);
 DEFAULTS.extraAssets=Array(90).fill(0);
-Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,stressBufferFloor:1,stressRecoveryDrawdown:10,stressStockSale:'proportional'});
+Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,stressBufferFloor:1,stressRecoveryDrawdown:10,stressStockSale:'proportional',stressReturnMode:'anchored',stressCashCap:true});
 function normalizeConfig(incoming){
  const c={...structuredClone(DEFAULTS),...structuredClone(incoming)};
  for(const [key,fallback] of [['allocations',80],['safeAllocations',null],['extraAssets',0]])if(Array.isArray(c[key])&&c[key].length>=30&&c[key].length<=90){const old=c[key];c[key]=Array.from({length:90},(_,i)=>i<old.length?old[i]:key==='allocations'?(old[old.length-1]??fallback):fallback);}
@@ -42,6 +42,7 @@ function validateStress(c){
  for(const key of ['stressBufferYears','stressBufferFloor','stressRecoveryDrawdown'])if(!Number.isFinite(c[key]))return '안전자산 보충 설정을 확인하세요.';
  if(c.stressBufferYears<0||c.stressBufferYears>10||c.stressBufferFloor<0||c.stressBufferFloor>c.stressBufferYears||c.stressRecoveryDrawdown<0||c.stressRecoveryDrawdown>100)return '안전자산 목표는 0~10년, 최소 잔액은 목표 이하, 회복 허용 하락률은 0~100%로 입력하세요.';
  if(!['none','annual','conditional'].includes(c.stressBufferPolicy)||!['proportional','vtiFirst'].includes(c.stressStockSale))return '안전자산 보충 전략과 주식 매도 순서를 확인하세요.';
+ if(!['anchored','free'].includes(c.stressReturnMode)||typeof c.stressCashCap!=='boolean')return '시장 경로의 최종 수익률 방식과 안전자산 상한 설정을 확인하세요.';
  return '';
 }
 function simulate(c,marketPath=[]){
@@ -92,19 +93,27 @@ function simulate(c,marketPath=[]){
   }
   const extraAsset=c.extraAssets?.[t-1]??0,extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
   cash+=extraSafe;vShares+=extraVti/vp;sShares+=(extraAsset-extraSafe-extraVti)/sp;
-  rows.push({...valuation(t),working,saving,extraAsset,vtiContribution,schdContribution,safeContribution,netDividend,netInterest,grossDividend,withdrawal,stockSold,cashUsed,requestedWithdrawal,unfunded,income,budget,vtiReturn:vReturn,schdReturn:sReturn,vtiDividendFactor:vFactor,schdDividendFactor:sFactor});
+  rows.push({...valuation(t),working,saving,extraAsset,vtiContribution,schdContribution,safeContribution,netDividend,netInterest,grossDividend,withdrawal,stockSold,cashUsed,requestedWithdrawal,unfunded,income,budget,marketMonths:market.months,vtiReturn:vReturn,schdReturn:sReturn,vtiDividendFactor:vFactor,schdDividendFactor:sFactor});
   vd*=1+c.vtiDividendGrowth/100;sd*=1+c.schdDividendGrowth/100;
  }
  return rows;
 }
 const BUFFER_POLICIES={none:'주식 매도로 보충 안 함',annual:'매년 목표까지 보충',conditional:'회복 조건부 보충 + 최소 잔액'};
 function monthlyMarketPath(c,random){
- const result=[],rho=c.stressCorr/100,correlation=Math.sqrt(Math.max(0,1-rho*rho));
+ const result=[],rho=c.stressCorr/100,correlation=Math.sqrt(Math.max(0,1-rho*rho)),shocks=[];
+ let sumV=0,sumS=0,activeCount=0;
+ // Draw the whole path first. Center active log shocks to condition on a known endpoint.
+ // Portfolio decisions receive only the resulting month, never future shocks or prices.
+ for(let i=0;i<(c.retireYears+c.horizon)*12;i++){
+  const radius=Math.sqrt(-2*Math.log(random())),angle=2*Math.PI*random(),z=radius*Math.cos(angle),other=rho*z+correlation*radius*Math.sin(angle),active=c.stressScope==='all'||i>=c.retireYears*12;
+  const v=active?c.stressVtiVol/100/Math.sqrt(12)*z:0,s=active?c.stressSchdVol/100/Math.sqrt(12)*other:0;
+  shocks.push({v,s,active});if(active){sumV+=v;sumS+=s;activeCount++;}
+ }
+ const centerV=c.stressReturnMode==='anchored'?sumV/activeCount:0,centerS=c.stressReturnMode==='anchored'?sumS/activeCount:0;
  for(let t=1;t<=c.retireYears+c.horizon;t++){
   const months=[];let vg=1,sg=1;
   for(let m=0;m<12;m++){
-   const radius=Math.sqrt(-2*Math.log(random())),angle=2*Math.PI*random(),z=radius*Math.cos(angle),other=rho*z+correlation*radius*Math.sin(angle),active=c.stressScope==='all'||t>c.retireYears;
-   const v=Math.expm1(Math.log1p(c.vtiPriceGrowth/100)/12+(active?c.stressVtiVol/100/Math.sqrt(12)*z:0)),s=Math.expm1(Math.log1p(c.schdPriceGrowth/100)/12+(active?c.stressSchdVol/100/Math.sqrt(12)*other:0));
+   const shock=shocks[(t-1)*12+m],v=Math.expm1(Math.log1p(c.vtiPriceGrowth/100)/12+shock.v-(shock.active?centerV:0)),s=Math.expm1(Math.log1p(c.schdPriceGrowth/100)/12+shock.s-(shock.active?centerS:0));
    months.push({vtiReturn:v,schdReturn:s});vg*=1+v;sg*=1+s;
   }
   const annual=stressShock(vg-1,sg-1,c);result.push({...annual,months});
@@ -155,8 +164,10 @@ function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
   const nextBudget=futureYearBudget(c,t),cashTarget=nextBudget*c.stressBufferYears,cashFloor=nextBudget*c.stressBufferFloor,healthy=indexValue()>=yearStartIndex*(1-1e-10)&&indexValue()>=peakIndex*(1-c.stressRecoveryDrawdown/100)*(1-1e-10);
   const replenishTo=policy==='annual'?cashTarget:policy==='conditional'?(healthy?cashTarget:cashFloor):0;
   if(t<c.retireYears+c.horizon&&cash<replenishTo){refillSold=sell(replenishTo-cash);cash+=refillSold;if(indexValue()<peakIndex*(1-1e-8))downMarketSold+=refillSold;}
+  const cashReinvested=c.stressCashCap?Math.max(0,cash-cashTarget):0;
+  if(cashReinvested>0){const ratio=stockPctFor(c,t-1)/100;cash-=cashReinvested;vShares+=cashReinvested*ratio/vp;sShares+=cashReinvested*(1-ratio)/sp;}
   const deflator=Math.pow(1+c.inflation/100,t),nextMonthly=c.monthlyBudget*Math.pow(1+c.inflation/100,t+1/12);
-  rows.push({elapsed:t,year:c.startYear+t,age:c.startYear+t-c.birthYear,working:false,saving:0,extraAsset,vtiContribution:0,schdContribution:0,safeContribution:0,vti:vShares*vp,schd:sShares*sp,cash,total:vShares*vp+sShares*sp+cash,deflator,netDividend,grossDividend,netInterest,requestedWithdrawal,withdrawal,stockSold,cashUsed,unfunded,income,budget,realIncome,realBudget,realNaturalIncome,realGap,livingGap,maxMonthlyGapReal,firstGapMonth,firstUnfundedMonth,hadEmpty,hadLivingGap:firstGapMonth!==null,hadUnfunded:firstUnfundedMonth!==null,refillSold,downMarketSold,minCashMonths:Number.isFinite(minCashMonths)?minCashMonths:null,cashMonths:nextMonthly>0?cash/nextMonthly:null,cashTarget,cashFloor,marketDrawdown:1-indexValue()/peakIndex,refillEligible:healthy,vtiReturn:ytdV-1,schdReturn:ytdS-1});
+  rows.push({elapsed:t,year:c.startYear+t,age:c.startYear+t-c.birthYear,working:false,saving:0,extraAsset,vtiContribution:0,schdContribution:0,safeContribution:0,vti:vShares*vp,schd:sShares*sp,cash,total:vShares*vp+sShares*sp+cash,deflator,netDividend,grossDividend,netInterest,requestedWithdrawal,withdrawal,stockSold,cashUsed,unfunded,income,budget,realIncome,realBudget,realNaturalIncome,realGap,livingGap,maxMonthlyGapReal,firstGapMonth,firstUnfundedMonth,hadEmpty,hadLivingGap:firstGapMonth!==null,hadUnfunded:firstUnfundedMonth!==null,refillSold,cashReinvested,marketMonths:months,downMarketSold,minCashMonths:Number.isFinite(minCashMonths)?minCashMonths:null,cashMonths:nextMonthly>0?cash/nextMonthly:null,cashTarget,cashFloor,marketDrawdown:1-indexValue()/peakIndex,refillEligible:healthy,vtiReturn:ytdV-1,schdReturn:ytdS-1});
  }
  return rows;
 }
@@ -176,6 +187,16 @@ function randomMarketPath(c,random){
 }
 function stressConfig(c){return {...c,withdrawMode:c.stressSpending==='budget'?'budget':c.withdrawMode};}
 function crashMarketPath(c,late=false){
+ if(c.stressReturnMode==='anchored'){
+  const total=c.horizon*12,duration=Math.min(c.stressCrashDuration*12,Math.floor(total/2)),start=late?total-2*duration:0;
+  const crash=Math.log1p(-c.stressCrash/100)/12,baseV=Math.log1p(c.vtiPriceGrowth/100)/12,baseS=Math.log1p(c.schdPriceGrowth/100)/12;
+  return Array.from({length:c.retireYears+c.horizon},(_,i)=>{
+   const months=Array.from({length:12},(_,m)=>{const at=(i-c.retireYears)*12+m,inCrash=at>=start&&at<start+duration,inRecovery=at>=start+duration&&at<start+2*duration;
+    return {vtiReturn:Math.expm1(c.stressCrash===0?baseV:inCrash?crash:inRecovery?2*baseV-crash:baseV),schdReturn:Math.expm1(c.stressCrash===0?baseS:inCrash?crash:inRecovery?2*baseS-crash:baseS)};});
+   const v=months.reduce((value,m)=>value*(1+m.vtiReturn),1)-1,s=months.reduce((value,m)=>value*(1+m.schdReturn),1)-1;
+   return {...stressShock(v,s,c),months};
+  });
+ }
  const duration=Math.min(c.horizon,c.stressCrashDuration),start=late?c.horizon-duration:0;
  return Array.from({length:c.retireYears+c.horizon},(_,i)=>i>=c.retireYears+start&&i<c.retireYears+start+duration?stressShock(-c.stressCrash/100,-c.stressCrash/100,c):{});
 }
@@ -183,9 +204,10 @@ function stressPathSummary(rows,c){
  const retired=rows.slice(c.retireYears+1),gap=r=>r.livingGap??Math.max(0,r.budget-r.income),firstGap=retired.find(r=>r.hadLivingGap??(gap(r)>.00001)),firstUnfunded=retired.find(r=>r.hadUnfunded??(r.unfunded>.00001)),firstEmpty=retired.find(r=>r.hadEmpty??(r.total<.00001));
  return {retire:rows[c.retireYears],final:rows[rows.length-1],firstGap,firstUnfunded,firstEmpty,maxGapReal:Math.max(0,...retired.map(r=>r.maxMonthlyGapReal??gap(r)/r.deflator/12)),gapSum:retired.reduce((sum,r)=>sum+(r.realGap??gap(r)/r.deflator),0),refillTotal:retired.reduce((sum,r)=>sum+(r.refillSold||0)/r.deflator,0),downSaleTotal:retired.reduce((sum,r)=>sum+(r.downMarketSold||0)/r.deflator,0),minCashMonths:Math.min(Infinity,...retired.map(r=>r.minCashMonths??Infinity))};
 }
-function createStressAccumulator(c){return {count:0,supported:0,unfunded:0,empty:0,refills:[],downSales:[],cashMonths:[],values:Array.from({length:c.retireYears+c.horizon+1},()=>[]),worst:null};}
+function createStressAccumulator(c){return {count:0,supported:0,unfunded:0,empty:0,refills:[],downSales:[],cashMonths:[],values:Array.from({length:c.retireYears+c.horizon+1},()=>[]),worst:null,sample:null};}
 function addStressPath(acc,rows,c){
  const summary=stressPathSummary(rows,c);acc.count++;if(!summary.firstGap)acc.supported++;if(summary.firstUnfunded)acc.unfunded++;if(summary.firstEmpty)acc.empty++;
+ if(!acc.sample)acc.sample=rows;
  rows.forEach((r,i)=>acc.values[i].push(r.total));
  acc.refills.push(summary.refillTotal);acc.downSales.push(summary.downSaleTotal);acc.cashMonths.push(summary.minCashMonths);
  if(!acc.worst||summary.final.total<acc.worst.summary.final.total-1e-7||(Math.abs(summary.final.total-acc.worst.summary.final.total)<=1e-7&&summary.gapSum>acc.worst.summary.gapSum))acc.worst={rows,summary};
@@ -193,7 +215,7 @@ function addStressPath(acc,rows,c){
 function stressQuantile(sorted,p){const at=(sorted.length-1)*p,lo=Math.floor(at),hi=Math.ceil(at);return sorted[lo]+(sorted[hi]-sorted[lo])*(at-lo);}
 function finishStress(acc,c,runner=simulate){
  const effective=stressConfig(c),flat=runner(effective),early=runner(effective,crashMarketPath(c)),late=runner(effective,crashMarketPath(c,true));
- return {count:acc.count,supported:acc.supported,unfunded:acc.unfunded,empty:acc.empty,bands:acc.values.map((values,i)=>{values.sort((a,b)=>a-b);return {elapsed:i,year:c.startYear+i,deflator:Math.pow(1+c.inflation/100,i),p10:stressQuantile(values,.1),p50:stressQuantile(values,.5),p90:stressQuantile(values,.9)};}),cases:{flat:{name:'일정 수익률 기준선',rows:flat},early:{name:'은퇴 초반 급락',rows:early},late:{name:'은퇴 후반 급락',rows:late},worst:{name:'반복 경로 중 기말 자산 최저',rows:acc.worst.rows}}};
+ return {count:acc.count,supported:acc.supported,unfunded:acc.unfunded,empty:acc.empty,bands:acc.values.map((values,i)=>{values.sort((a,b)=>a-b);return {elapsed:i,year:c.startYear+i,deflator:Math.pow(1+c.inflation/100,i),p10:stressQuantile(values,.1),p50:stressQuantile(values,.5),p90:stressQuantile(values,.9)};}),cases:{sample:{name:'무작위 예시 경로',rows:acc.sample},flat:{name:'일정 수익률 기준선',rows:flat},early:{name:'은퇴 초반 급락',rows:early},late:{name:'은퇴 후반 급락',rows:late},worst:{name:'반복 경로 중 기말 자산 최저',rows:acc.worst.rows}}};
 }
 
 // @single-file-exports

@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),{boot}=require('./test-records.cjs');
 const html=fs.readFileSync(require('node:path').join(__dirname,'../../dist/index.html'),'utf8'),context={structuredClone};vm.createContext(context);vm.runInContext(html.match(/<script id="calculation-engine">([\s\S]*?)<\/script>/)[1]+';globalThis.api={DEFAULTS,simulate,simulateMonthly,validateConfig,normalizeConfig,monthlyMarketPath,stressRandom,stressPathSummary,stressConfig};',context);
 const {DEFAULTS,simulate,simulateMonthly,validateConfig,normalizeConfig,monthlyMarketPath,stressRandom,stressPathSummary,stressConfig}=context.api,base=()=>structuredClone(DEFAULTS),near=(a,b,eps=1e-7)=>assert.ok(Math.abs(a-b)<=eps*Math.max(1,Math.abs(a)),`${a} != ${b}`);
-const fixture=()=>({...base(),initialVti:1000,initialSchd:0,initialCash:100,deployCash:0,retireYears:0,horizon:3,annualSaving:0,vtiPriceGrowth:0,schdPriceGrowth:0,vtiYield:0,schdYield:0,vtiDividendGrowth:0,schdDividendGrowth:0,cashYield:0,inflation:0,monthlyBudget:10,withdrawMode:'budget'});
+const fixture=()=>({...base(),initialVti:1000,initialSchd:0,initialCash:100,deployCash:0,retireYears:0,horizon:3,annualSaving:0,vtiPriceGrowth:0,schdPriceGrowth:0,vtiYield:0,schdYield:0,vtiDividendGrowth:0,schdDividendGrowth:0,cashYield:0,inflation:0,monthlyBudget:10,stressCashCap:false,withdrawMode:'budget'});
 let c=fixture();
 // A refill is a transfer, never extra wealth, spending or income.
 for(const policy of ['none','annual','conditional']){const rows=simulateMonthly(c,[],policy);near(rows[3].total,1100-360);near(rows[1].income,120);near(rows[1].requestedWithdrawal,120);assert.equal(rows[1].hadLivingGap,false);near(rows[3].refillSold,0);}

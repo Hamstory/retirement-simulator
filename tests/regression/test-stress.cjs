@@ -17,7 +17,7 @@ near(simulate({...c,monthlyBudget:0},early)[3].total,9000);near(simulate({...c,m
 // Dividend cuts affect this year's payment and the future per-share dividend level.
 c={...c,withdrawMode:'extra',annualWithdrawal:0,vtiYield:1.05,vtiDividendGrowth:3};const cuts=simulate(c,[{vtiDividendFactor:.9}]);near(cuts[1].netDividend,10000*.0105*.9*.85);near(cuts[2].netDividend,cuts[1].netDividend*1.03);
 // Identical shocks preserve the same terminal value without income, contributions or withdrawals.
-c={...c,vtiYield:0,stressCrash:35,stressCrashDuration:2,horizon:10};const crashEarly=crashMarketPath(c),crashLate=crashMarketPath(c,true);near(simulate(c,crashEarly)[10].total,simulate(c,crashLate)[10].total);assert.equal(crashEarly.filter(p=>p.vtiReturn===-.35).length,2);assert.equal(crashLate.filter(p=>p.vtiReturn===-.35).length,2);
+c={...c,vtiYield:0,stressReturnMode:'free',stressCrash:35,stressCrashDuration:2,horizon:10};const crashEarly=crashMarketPath(c),crashLate=crashMarketPath(c,true);near(simulate(c,crashEarly)[10].total,simulate(c,crashLate)[10].total);assert.equal(crashEarly.filter(p=>p.vtiReturn===-.35).length,2);assert.equal(crashLate.filter(p=>p.vtiReturn===-.35).length,2);
 const short={...c,horizon:1};assert.equal(crashMarketPath(short).length,1);assert.equal(crashMarketPath(short)[0].vtiReturn,-.35);
 c={...base(),initialVti:100,initialSchd:0,initialCash:100,deployCash:0,retireYears:0,horizon:2,vtiYield:0,schdYield:0,cashYield:0,vtiPriceGrowth:0,schdPriceGrowth:0,inflation:0,monthlyBudget:100,annualWithdrawal:500,withdrawMode:'extra',withdrawSource:'vtiFirst'};
 let rows=simulate(c),s=stressPathSummary(rows,c);assert.ok(s.firstGap);assert.ok(s.firstUnfunded);assert.equal(s.firstEmpty,undefined);near(rows[1].cash,100);near(rows[1].unfunded,400);
