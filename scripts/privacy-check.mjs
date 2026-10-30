@@ -6,6 +6,9 @@ import assert from 'node:assert/strict';
 import { DEFAULTS } from '../src/engine.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+export function isPublicCommitEmail(email) {
+  return email.endsWith('@users.noreply.github.com') || email === 'noreply@github.com';
+}
 export async function checkPrivacy() {
   // This is an explicitly fictional public starter, never a user's exported configuration.
   assert.deepEqual(
@@ -25,7 +28,7 @@ export async function checkPrivacy() {
       const text = await readFile(full, 'utf8');
       if (/\.(?:personal|local)\.json$/.test(relative) || /(?:^|\/)exports\//.test(relative)) problems.push(`${relative}: private export`);
       const emails = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || [];
-      if (emails.some(email => !/@(?:users\.noreply\.github\.com|example\.com|example\.test)$/.test(email))) problems.push(`${relative}: personal email`);
+      if (emails.some(email => !isPublicCommitEmail(email) && !/@(?:example\.com|example\.test)$/.test(email))) problems.push(`${relative}: personal email`);
       if (/\/(?:Users|home)\/[^/\s'"<>]+\//.test(text)) problems.push(`${relative}: personal filesystem path`);
       if (/(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----)/.test(text)) problems.push(`${relative}: credential-like content`);
     }
@@ -35,7 +38,7 @@ export async function checkPrivacy() {
   try { isGit = execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() === 'true'; } catch {}
   if (isGit) {
     const emails = execFileSync('git', ['log', '--format=%ae%n%ce', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim().split(/\s+/).filter(Boolean);
-    if (emails.some(email => !email.endsWith('@users.noreply.github.com'))) problems.push('Git history: use noreply author and committer emails');
+    if (emails.some(email => !isPublicCommitEmail(email))) problems.push('Git history: use noreply author and committer emails');
   }
   if (problems.length) throw new Error('Privacy review failed (values intentionally omitted):\n' + problems.join('\n'));
   console.log('Privacy check passed: fictional starter, source/build scan, and available HEAD history. Manual review remains required.');

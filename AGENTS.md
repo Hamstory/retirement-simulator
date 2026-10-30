@@ -1,6 +1,6 @@
 # Project instructions
 
-- 소스는 `src/`가 기준이다. `dist/`는 커밋하지 않는다. Pages용 `docs/index.html`과 `docs/.nojekyll`은 빌드 결과로 커밋하지만 직접 수정하지 않는다.
+- 소스는 `src/`가 기준이다. `dist/index.html`은 빌드 결과로 커밋하지만 직접 수정하지 않는다. `docs/`에는 문서·TC만 두며 Pages는 Actions로 `dist/`를 배포한다.
 - 오프라인 단독 HTML 기능과 기존 localStorage 키를 유지한다.
 - 자산 금액의 내부 단위는 만원이다. 월간·연간·명목·현재 가치 단위를 구분한다.
 - 보충 매도는 주식→안전자산 이동이다. 수익·추가 입금·생활비로 중복 계산하지 않는다.

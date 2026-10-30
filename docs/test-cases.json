@@ -341,13 +341,13 @@
   },
   {
     "id": "STR-005",
-    "title": "커밋한 Pages HTML은 현재 소스 빌드와 일치한다",
+    "title": "커밋한 dist HTML은 현재 소스 빌드와 일치한다",
     "priority": "P0",
     "mode": "auto",
     "file": "tests/structure.test.mjs",
-    "precondition": "npm run build로 Pages 파일을 생성했다.",
-    "steps": "dist/index.html과 커밋된 docs/index.html 및 .nojekyll을 검사한다.",
-    "expected": "HTML 내용이 정확히 같고 .nojekyll이 존재한다."
+    "precondition": "npm run build로 dist/index.html을 생성했다.",
+    "steps": "소스를 메모리에서 다시 빌드해 커밋된 dist/index.html과 비교한다.",
+    "expected": "HTML 내용이 정확히 같으며 오래된 빌드이면 파일을 덮어쓰지 않고 실패한다."
   },
   {
     "id": "STR-006",

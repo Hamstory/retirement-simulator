@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { DEFAULTS, simulate } from '../src/engine.js';
-import { checkPrivacy } from '../scripts/privacy-check.mjs';
+import { build } from '../scripts/build.mjs';
+import { checkPrivacy, isPublicCommitEmail } from '../scripts/privacy-check.mjs';
 
 const html = fs.readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8');
 const body = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style>[\s\S]*?<\/style>/gi, '');
@@ -35,10 +36,13 @@ test('STR-004 정적 HTML 요소의 열림·닫힘 구조가 맞는다', () => {
   }
   assert.deepEqual(stack, []);
 });
-test('STR-005 커밋한 Pages HTML은 현재 소스 빌드와 일치한다', () => {
-  assert.equal(fs.readFileSync(new URL('../docs/index.html', import.meta.url), 'utf8'), html);
-  assert.ok(fs.existsSync(new URL('../docs/.nojekyll', import.meta.url)));
+test('STR-005 커밋한 dist HTML은 현재 소스 빌드와 일치한다', async () => {
+  assert.equal(html, await build({ write: false }));
 });
 test('STR-006 공개 기본값·소스·빌드·사용 가능한 커밋 이력이 개인정보 검사를 통과한다', async () => {
+  assert.ok(isPublicCommitEmail('demo@users.noreply.github.com'));
+  assert.ok(isPublicCommitEmail('noreply@github.com'));
+  assert.ok(!isPublicCommitEmail('person@example.com'));
+  assert.ok(!isPublicCommitEmail('noreply@github.com' + '.example.com'));
   await checkPrivacy();
 });

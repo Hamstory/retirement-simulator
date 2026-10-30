@@ -38,7 +38,7 @@
 | STR-002 | 자동 | P1 | [DOM ID는 유일하고 모든 label과 기본 필드의 대상이 존재한다](#str-002) |
 | STR-003 | 자동 | P1 | [HTML은 외부 런타임 없이 완성된 한 파일이다](#str-003) |
 | STR-004 | 자동 | P1 | [정적 HTML 요소의 열림·닫힘 구조가 맞는다](#str-004) |
-| STR-005 | 자동 | P0 | [커밋한 Pages HTML은 현재 소스 빌드와 일치한다](#str-005) |
+| STR-005 | 자동 | P0 | [커밋한 dist HTML은 현재 소스 빌드와 일치한다](#str-005) |
 | STR-006 | 자동 | P0 | [공개 기본값·소스·빌드·사용 가능한 커밋 이력이 개인정보 검사를 통과한다](#str-006) |
 | LNG-001 | 별도 장기 검증 | P1 | [1000개 동일 월별 경로에서 세 전략을 60년간 검증한다](#lng-001) |
 | MAN-001 | 수동 · 미실행 | P1 | [데스크톱·모바일 레이아웃](#man-001) |
@@ -356,11 +356,11 @@
 
 <a id="str-005"></a>
 
-## STR-005 커밋한 Pages HTML은 현재 소스 빌드와 일치한다
+## STR-005 커밋한 dist HTML은 현재 소스 빌드와 일치한다
 
-- 전제: npm run build로 Pages 파일을 생성했다.
-- 실행: dist/index.html과 커밋된 docs/index.html 및 .nojekyll을 검사한다.
-- 기대 결과: HTML 내용이 정확히 같고 .nojekyll이 존재한다.
+- 전제: npm run build로 dist/index.html을 생성했다.
+- 실행: 소스를 메모리에서 다시 빌드해 커밋된 dist/index.html과 비교한다.
+- 기대 결과: HTML 내용이 정확히 같으며 오래된 빌드이면 파일을 덮어쓰지 않고 실패한다.
 - 검증 코드: [tests/structure.test.mjs](../tests/structure.test.mjs)
 
 <a id="str-006"></a>

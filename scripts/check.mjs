@@ -5,9 +5,9 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { checkPrivacy } from './privacy-check.mjs';
 
-const html = await build();
-if (await readFile(path.join(root, 'docs/index.html'), 'utf8') !== html) {
-  throw new Error('Pages build is stale. Run npm run build and commit docs/index.html.');
+const html = await build({ write: false });
+if (await readFile(path.join(root, 'dist/index.html'), 'utf8') !== html) {
+  throw new Error('Pages build is stale. Run npm run build and commit dist/index.html.');
 }
 await checkPrivacy();
 await verifyPlan();

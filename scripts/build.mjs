@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 export const root = fileURLToPath(new URL('../', import.meta.url));
-export async function build({ writePages = false } = {}) {
+export async function build({ write = true } = {}) {
   const [template, css, engineSource, appSource] = await Promise.all(
     ['index.template.html', 'styles.css', 'engine.js', 'app.js']
       .map(name => readFile(path.join(root, 'src', name), 'utf8'))
@@ -26,17 +26,14 @@ export async function build({ writePages = false } = {}) {
     if (html.split(marker).length !== 2) throw new Error(`템플릿 표식은 정확히 한 개여야 합니다: ${marker}`);
     html = html.replace(marker, () => content);
   }
-  await mkdir(path.join(root, 'dist'), { recursive: true });
-  await writeFile(path.join(root, 'dist/index.html'), html);
-  if (writePages) {
-    await mkdir(path.join(root, 'docs'), { recursive: true });
-    await writeFile(path.join(root, 'docs/index.html'), html);
-    await writeFile(path.join(root, 'docs/.nojekyll'), '');
+  if (write) {
+    await mkdir(path.join(root, 'dist'), { recursive: true });
+    await writeFile(path.join(root, 'dist/index.html'), html);
   }
   return html;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const html = await build({ writePages: true });
-  console.log(`Built dist/index.html and docs/index.html (${Buffer.byteLength(html)} bytes; external runtime dependencies: 0)`);
+  const html = await build();
+  console.log(`Built dist/index.html (${Buffer.byteLength(html)} bytes; external runtime dependencies: 0)`);
 }

@@ -13,14 +13,14 @@ npm test
 npm run test:long
 ```
 
-`npm test`는 HTML 빌드 → TC 정의·문서 일치 확인 → 자동 테스트 순서로 실행합니다. 완료 후 `dist/index.html`을 브라우저에서 열면 됩니다. npm이 없는 환경에서는 다음 명령도 동일하게 작동합니다.
+`npm test`는 커밋된 HTML과 소스의 일치 확인 → TC 정의·문서 일치 확인 → 자동 테스트 순서로 실행합니다. 완료 후 `dist/index.html`을 브라우저에서 열면 됩니다. npm이 없는 환경에서는 다음 명령도 동일하게 작동합니다.
 
 ```sh
 node scripts/check.mjs
 node --test tests/long-run.test.mjs
 ```
 
-빌드 결과는 `dist/index.html`과 커밋하는 `docs/index.html`에 함께 생성됩니다. 빌드만 다시 하려면 `npm run build`, TC 문서를 다시 생성하려면 `npm run test:plan`을 실행하세요.
+빌드 결과는 `dist/index.html`에 생성하며 소스와 함께 커밋합니다. 빌드만 다시 하려면 `npm run build`, TC 문서를 다시 생성하려면 `npm run test:plan`을 실행하세요.
 
 ## 기능
 
@@ -55,8 +55,8 @@ docs/
   TEST_CASES.md         전제·절차·기대 결과
   MODEL.md              계산 순서와 모형 한계
   RELEASE_CHECKLIST.md  실제 브라우저 수동 확인
-  index.html            Pages용 생성 HTML · 커밋 대상
-  .nojekyll             Pages 정적 파일 제공
+dist/
+  index.html            Pages·오프라인용 생성 HTML · 커밋 대상
 ```
 
 ## 테스트 관리
@@ -65,7 +65,7 @@ docs/
 
 계산 변경은 관련 TC ID의 기대 결과를 먼저 검토하고 코드와 함께 갱신합니다. 실제 브라우저 검증과 격리 DOM 검증은 구분합니다. 격리 DOM은 저장·복원과 이벤트 흐름을 확인하지만 실제 레이아웃, 파일 다운로드, 브라우저 보안 정책까지 보증하지 않습니다. 수동 6개는 [릴리스 체크리스트](docs/RELEASE_CHECKLIST.md)에 결과를 남깁니다.
 
-GitHub Actions는 push/PR마다 Node.js 22·24에서 기본 검증을 실행하고, Node.js 24에서 장기 검증 후 단독 HTML을 `retirement-simulator-html` 아티팩트로 보관합니다. `docs/index.html`은 소스와 같은 저장소에서 관리합니다. Pages 배포 소스는 `main` 브랜치의 `/docs`를 선택합니다.
+GitHub Actions는 push/PR마다 Node.js 22·24에서 기본 검증을 실행하고, Node.js 24에서 장기 검증 후 단독 HTML을 `retirement-simulator-html` 아티팩트로 보관합니다. `dist/index.html`은 소스와 같은 저장소에서 관리합니다. 모든 검증을 통과한 `main`의 `dist/`만 Pages에 배포합니다.
 
 ## 계산 범위
 
@@ -80,8 +80,10 @@ GitHub Actions는 push/PR마다 Node.js 22·24에서 기본 검증을 실행하�
 ## GitHub Pages
 
 1. `npm run build`로 빌드합니다.
-2. 소스 변경과 함께 `docs/index.html`, `docs/.nojekyll`을 커밋합니다.
-3. 저장소 Settings → Pages → Deploy from a branch → `main` / `/docs`를 선택합니다.
-4. 배포가 끝나면 저장소의 Pages 주소에서 사용합니다.
+2. `npm test`로 빌드 일치·개인정보·자동 테스트 검사를 통과시킵니다.
+3. 소스 변경과 함께 `dist/index.html`을 커밋합니다.
+4. 저장소 Settings → Pages → Source를 **GitHub Actions**로 선택합니다.
+5. `main` push 또는 Actions 수동 실행에서 검증을 통과하면 `dist/`가 배포됩니다. PR은 검증만 합니다.
+6. https://hamstory.github.io/retirement-simulator/ 에서 사용합니다.
 
 `npm test`는 소스와 커밋된 Pages HTML이 일치하는지 검사합니다. 개인 입력은 방문자의 브라우저 저장소에 남으며 서버로 업로드하지 않습니다. 실제 개인 JSON을 예시 파일로 공개하지 마세요.
