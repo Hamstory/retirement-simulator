@@ -1,4 +1,4 @@
-import { ETF_KEYS, ETF_CAPS, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress } from './engine.js';
+import { ETF_KEYS, ETF_CAPS, finalSavingSafeFor, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress } from './engine.js';
 
 'use strict';
 const $=id=>document.getElementById(id),storageKey='retirement-planner-local-v1',historyStorageKey='retirement-planner-records-v1';
@@ -38,7 +38,7 @@ function renderSeverancePanel(){
  const linked=config.severanceTiming==='retirement',year=severanceYearFor(config),field=$('severanceYear');
  field.disabled=linked;field.min=config.startYear;field.max=config.startYear+config.retireYears+config.horizon;
  if(linked){config.severanceYear=year;field.value=year;}
- const custom=config.severanceAllocation==='custom',index=Math.max(0,year-config.startYear-1),ratio=severanceAllocationFor(config,index),valid=[ratio.safe,...ETF_KEYS.map(k=>ratio[k])].every(v=>Number.isFinite(v)&&v>=0&&v<=100)&&(!custom||config.severanceSafePct+config.severanceVtiPct+config.severanceAorPct+config.severanceAoaPct<=100);
+ const custom=config.severanceAllocation==='custom',index=Math.max(0,year-config.startYear-1),ratio=severanceAllocationFor(config,index,year>config.startYear),valid=[ratio.safe,...ETF_KEYS.map(k=>ratio[k])].every(v=>Number.isFinite(v)&&v>=0&&v<=100)&&(!custom||config.severanceSafePct+config.severanceVtiPct+config.severanceAorPct+config.severanceAoaPct<=100);
  $('severanceCustomFields').classList.toggle('hidden',!custom);
  for(const id of ['severanceSafePct','severanceVtiPct','severanceAorPct','severanceAoaPct'])$(id).disabled=!custom;
  $('severanceSchdPct').textContent=valid?decimal(ratio.schd)+'%':'비율 확인';
@@ -47,9 +47,9 @@ function renderSeverancePanel(){
 function renderAllocation(){
  const count=Math.max(1,config.retireYears+config.horizon);let html='';
  for(let i=0;i<count;i++){
-  const ratios=etfRatiosFor(config,i),cells=allocationCells(i),year=config.startYear+i+1;
+  const ratios=etfRatiosFor(config,i),cells=allocationCells(i),year=config.startYear+i+1,finalSafe=finalSavingSafeFor(config,i);
   const input=(key,value,label)=>'<input class="allocation-input" type="number" min="0" max="100" step="0.1" value="'+value+'" data-year="'+i+'" data-kind="'+key+'" aria-label="'+year+'년 ETF 내 '+label+' 비율">';
-  html+='<tr><td>'+year+'년 · '+(i<config.retireYears?'저축':'은퇴')+'</td><td>'+amount(cells.saving)+'</td><td><input class="allocation-input" style="width:100px" type="number" min="0" max="10000000" step="100" value="'+(config.extraAssets[i]||'')+'" placeholder="0" data-year="'+i+'" data-kind="extra" aria-label="'+year+'년 세후 기타 추가 자산 · 만원">'+(severanceFor(config,i+1)>0?'<span class="receipt-note">퇴직금 +'+amount(severanceFor(config,i+1))+'</span>':'')+'</td><td><input class="allocation-input" type="number" min="0" max="100" step="0.1" value="'+(config.safeAllocations[i]??'')+'" placeholder="'+config.safeSavingPct+'" data-year="'+i+'" data-kind="safe" aria-label="'+year+'년 안전자산 비율"></td><td>'+input('vti',ratios.vti,'VTI')+'</td><td>'+decimal(ratios.schd)+'</td><td>'+input('aor',ratios.aor,'AOR')+'</td><td>'+input('aoa',ratios.aoa,'AOA')+'</td><td>'+cells.percent+'</td><td>'+cells.money+'</td></tr>';
+  html+='<tr><td>'+year+'년 · '+(i<config.retireYears?'저축':'은퇴')+(finalSafe?'<span class="receipt-note">안전자산 100% 옵션</span>':'')+'</td><td>'+amount(cells.saving)+'</td><td><input class="allocation-input" style="width:100px" type="number" min="0" max="10000000" step="100" value="'+(config.extraAssets[i]||'')+'" placeholder="0" data-year="'+i+'" data-kind="extra" aria-label="'+year+'년 세후 기타 추가 자산 · 만원">'+(severanceFor(config,i+1)>0?'<span class="receipt-note">퇴직금 +'+amount(severanceFor(config,i+1))+'</span>':'')+'</td><td><input class="allocation-input" type="number" min="0" max="100" step="0.1" value="'+(finalSafe?100:config.safeAllocations[i]??'')+'"'+(finalSafe?' disabled':'')+' placeholder="'+config.safeSavingPct+'" data-year="'+i+'" data-kind="safe" aria-label="'+year+'년 안전자산 비율"></td><td>'+input('vti',ratios.vti,'VTI')+'</td><td>'+decimal(ratios.schd)+'</td><td>'+input('aor',ratios.aor,'AOR')+'</td><td>'+input('aoa',ratios.aoa,'AOA')+'</td><td>'+cells.percent+'</td><td>'+cells.money+'</td></tr>';
  }
  $('allocationRows').innerHTML=html;
  $('allocationNote').textContent='안전자산 공란은 기본 비중('+decimal(config.safeSavingPct)+'%)을 사용합니다. 안전자산을 제외한 ETF 자금에서 VTI·AOR·AOA를 정하고 나머지는 SCHD입니다. 이 표에는 퇴직금 외의 기타 추가 자산만 세후 명목금액으로 입력하세요. 저축·기타 자산은 해당 행, 퇴직금은 패널의 비율로 배분하며 전체 비율·금액은 합산 결과입니다. 수령 전 생활비·수익에 소급 반영하지 않습니다. 첫 행의 ETF 비율은 최초 현금 투자에도 적용합니다. AOR·AOA 내부 채권은 별도 안전자산 잔액에 포함하지 않습니다.';
@@ -221,6 +221,7 @@ function update(rebuildSchedule=true){
  $('stressMaxWithdrawalRate').disabled=!config.stressWithdrawalCap;
  $('annualWithdrawal').disabled=config.withdrawMode==='budget';$('inflateWithdrawal').disabled=config.withdrawMode==='budget';
  $('retireNote').textContent=config.retireYears===0?'현재 자산으로 즉시 은퇴하는 경우를 계산합니다.':(config.startYear+1)+'~'+(config.startYear+config.retireYears)+'년 저축, '+(config.startYear+config.retireYears+1)+'년부터 인출합니다.';
+ $('finalSavingSafeNote').textContent=(config.finalSavingSafeOnly?'옵션 적용 · ':'옵션을 켜면 · ')+(config.retireYears>0?(config.startYear+config.retireYears)+'년의 저축·기타 추가 자산과 연도별 비율을 따르는 퇴직금에 안전자산 100%를 적용합니다.':'즉시 은퇴에는 저축 연도가 없어 적용하지 않습니다.')+' 기존 보유 ETF와 시작 시점 투자·수령, 퇴직금 별도 배분은 유지합니다. 옵션을 끄면 기존 연도별 비율로 돌아갑니다.';
  const error=validateConfig(config);setError(error);refreshStressState();if(error)return;
  projection=simulate(config);if(rebuildSchedule)renderAllocation();renderSummary();renderCharts();renderProjection();persist();
 }

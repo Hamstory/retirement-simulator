@@ -11,6 +11,7 @@ const ETF_KEYS=['vti','schd','aor','aoa'];
 const ETF_CAPS={vti:'Vti',schd:'Schd',aor:'Aor',aoa:'Aoa'};
 Object.assign(DEFAULTS,{initialAor:0,initialAoa:0,aorPriceGrowth:3,aoaPriceGrowth:3,aorYield:2.58,aoaYield:2.12,aorDividendGrowth:3,aoaDividendGrowth:3,stressAorVol:12,stressAoaVol:15,stressAorCrash:25,stressAoaCrash:30,severanceAorPct:0,severanceAoaPct:0,aorAllocations:Array(90).fill(0),aoaAllocations:Array(90).fill(0)});
 Object.assign(DEFAULTS,{stressWithdrawalCap:false,stressMaxWithdrawalRate:5});
+Object.assign(DEFAULTS,{finalSavingSafeOnly:false});
 Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,stressBufferFloor:1,stressRecoveryDrawdown:10,stressStockSale:'proportional',stressReturnMode:'anchored',stressCashCap:true});
 function normalizeConfig(incoming){
  const c={...structuredClone(DEFAULTS),...structuredClone(incoming)};
@@ -24,17 +25,18 @@ function etfRatiosFor(c,index){
  const vti=stockPctFor(c,index),aor=c.aorAllocations?.[index]??c.aorAllocations?.at(-1)??0,aoa=c.aoaAllocations?.[index]??c.aoaAllocations?.at(-1)??0;
  return {vti,schd:Math.max(0,100-vti-aor-aoa),aor,aoa};
 }
-function allocationFor(c,index){const safe=safePctFor(c,index),ratios=etfRatiosFor(c,index);return {safe,...Object.fromEntries(ETF_KEYS.map(k=>[k,(100-safe)*ratios[k]/100]))};}
+function finalSavingSafeFor(c,index){return c.finalSavingSafeOnly===true&&c.retireYears>0&&index===c.retireYears-1;}
+function allocationFor(c,index,applyFinalYear=true){const safe=applyFinalYear&&finalSavingSafeFor(c,index)?100:safePctFor(c,index),ratios=etfRatiosFor(c,index);return {safe,...Object.fromEntries(ETF_KEYS.map(k=>[k,(100-safe)*ratios[k]/100]))};}
 function severanceYearFor(c){return c.severanceTiming==='retirement'?c.startYear+c.retireYears:c.severanceYear;}
 function severanceFor(c,elapsed){return c.startYear+elapsed===severanceYearFor(c)?c.severanceAmount:0;}
 function extraAssetFor(c,elapsed){return (elapsed>0?(c.extraAssets?.[elapsed-1]??0):0)+severanceFor(c,elapsed);}
-function severanceAllocationFor(c,index){
- if(c.severanceAllocation!=='custom')return allocationFor(c,index);
+function severanceAllocationFor(c,index,applyFinalYear=true){
+ if(c.severanceAllocation!=='custom')return allocationFor(c,index,applyFinalYear);
  const safe=c.severanceSafePct,vti=c.severanceVtiPct,aor=c.severanceAorPct,aoa=c.severanceAoaPct;
  return {safe,vti,aor,aoa,schd:Math.max(0,100-safe-vti-aor-aoa)};
 }
 function receiptAllocationFor(c,elapsed){
- const index=Math.max(0,elapsed-1),other=elapsed>0?(c.extraAssets?.[index]??0):0,severance=severanceFor(c,elapsed),ratio=severanceAllocationFor(c,index),annual=allocationFor(c,index);
+ const index=Math.max(0,elapsed-1),other=elapsed>0?(c.extraAssets?.[index]??0):0,severance=severanceFor(c,elapsed),ratio=severanceAllocationFor(c,index,elapsed>0),annual=allocationFor(c,index);
  return Object.fromEntries(['safe',...ETF_KEYS].map(k=>[k,other*annual[k]/100+severance*ratio[k]/100]));
 }
 function etfTotal(values){return ETF_KEYS.reduce((sum,k)=>sum+values[k],0);}
@@ -53,6 +55,7 @@ function validateConfig(c){
  if(c.retireYears<0||c.retireYears>30||!Number.isInteger(c.retireYears)||c.horizon<1||c.horizon>60||!Number.isInteger(c.horizon))return '저축 기간은 0~30년, 은퇴 후 기간은 1~60년의 정수로 입력하세요.';
  if(c.startYear<2020||c.startYear>2100||!Number.isInteger(c.startYear)||!Number.isInteger(c.birthYear)||c.birthYear<1900||c.birthYear>c.startYear)return '시작 연도와 출생 연도를 확인하세요.';
  if(c.safeSavingPct<0||c.safeSavingPct>100||c.dividendTax<0||c.dividendTax>100||c.cashTax<0||c.cashTax>100)return '비중과 세율은 0~100% 범위로 입력하세요.';
+ if(typeof c.finalSavingSafeOnly!=='boolean')return '마지막 저축 연도 안전자산 옵션을 확인하세요.';
  if(c.inflation < -5 || c.inflation>20)return '물가상승률은 -5~20% 범위로 입력하세요.';
  for(const k of ETF_KEYS.flatMap(k=>[k+'PriceGrowth',k+'DividendGrowth']))if(c[k]<-50||c[k]>50)return '주가·배당 증가율은 -50~50% 범위로 입력하세요.';
  for(const k of [...ETF_KEYS.map(k=>k+'Yield'),'cashYield'])if(c[k]<0||c[k]>30)return '배당·이자율은 0~30% 범위로 입력하세요.';
@@ -242,4 +245,4 @@ function finishStress(acc,c,runner=simulate){
 }
 
 // @single-file-exports
-export { ETF_KEYS, ETF_CAPS, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };
+export { ETF_KEYS, ETF_CAPS, finalSavingSafeFor, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };

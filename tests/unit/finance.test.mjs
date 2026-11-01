@@ -393,3 +393,26 @@ test('TC-050 네 ETF 월별 손실·분배금 삭감·수령 후 총자산을 �
  const paid=simulateMonthly(late,[],'none');near(paid[2].income,0);assert.equal(paid[2].firstGapMonth,1);near(paid[2].aor,400);near(paid[2].aoa,600);near(paid[3].income,120);near(paid[3].total,880);
  const recovered=simulateMonthly({...fourFixture(),initialVti:0,initialCash:0,initialAor:1000,initialAoa:1000},[],'conditional')[1];assert.equal(recovered.refillEligible,true);near(recovered.cash,360);near(recovered.refillSold,360);near(recovered.total,1880);near(recovered.income,120);
 });
+
+test('TC-051 마지막 저축 연도 안전자산 옵션은 신규 자금에만 적용된다',()=>{
+ const c={...fourFixture(),initialVti:1000,initialCash:0,retireYears:2,annualSaving:100,monthlyBudget:0,severanceAmount:1000,finalSavingSafeOnly:true};
+ c.allocations.fill(40);c.aorAllocations.fill(20);c.aoaAllocations.fill(20);c.safeAllocations[1]=40;c.extraAssets[1]=300;
+ const saved=JSON.stringify(c);
+ for(const rows of [simulate(c),simulateMonthly(c,[],'none')]){
+  near(rows[1].cash,20);near(rows[2].cash,1420);near(rows[2].vti,1032);near(rows[2].schd,16);near(rows[2].aor,16);near(rows[2].aoa,16);near(rows[2].total,2500);
+  near(rows[2].safeContribution,100);for(const k of ['vti','schd','aor','aoa'])near(rows[2][k+'Contribution'],0);
+ }
+ assert.equal(JSON.stringify(c),saved);near(simulate({...c,finalSavingSafeOnly:false})[2].cash,580);
+ const custom={...c,severanceAllocation:'custom',severanceSafePct:10,severanceVtiPct:20,severanceAorPct:30,severanceAoaPct:0};
+ for(const rows of [simulate(custom),simulateMonthly(custom,[],'none')]){near(rows[2].cash,520);near(rows[2].vti,1232);near(rows[2].schd,416);near(rows[2].aor,316);near(rows[2].total,2500);}
+ const rising=simulate({...c,vtiPriceGrowth:10});near(rising[2].vti,1245.2);
+});
+test('TC-052 마지막 저축 연도 옵션은 은퇴 시점 변경과 초기 수령을 구분한다',()=>{
+ const c={...fourFixture(),initialVti:0,initialCash:1000,deployCash:500,annualSaving:100,monthlyBudget:0,retireYears:1,severanceAmount:800,severanceTiming:'year',severanceYear:2026,finalSavingSafeOnly:true};
+ const r=simulate(c);near(r[0].cash,660);near(r[0].vti,912);near(r[0].schd,228);near(r[1].cash,760);
+ const immediate=simulate({...c,retireYears:0});near(immediate[0].cash,660);near(immediate[1].cash,660);
+ const moved={...c,deployCash:0,initialCash:0,severanceAmount:0,retireYears:3};const rows=simulate(moved);near(rows[1].safeContribution,20);near(rows[2].safeContribution,20);near(rows[3].safeContribution,100);
+ const after={...moved,severanceAmount:800,severanceYear:2030};near(simulate(after)[4].cash-simulate(moved)[4].cash,160);
+ const old=base();delete old.finalSavingSafeOnly;assert.equal(normalizeConfig(old).finalSavingSafeOnly,false);assert.deepEqual(simulate(normalizeConfig(old)),simulate(base()));
+ for(const value of [null,undefined,'true',1])assert.ok(validateConfig({...base(),finalSavingSafeOnly:value}));
+});

@@ -5,7 +5,7 @@ import { DEFAULTS, monthlyMarketPath, stressRandom, simulateMonthly, stressConfi
 test('LNG-001 1000개 동일 월별 경로에서 세 전략을 60년간 검증한다', { timeout: 60000 }, () => {
   const c = { ...structuredClone(DEFAULTS), horizon: 60, initialAor:1200,initialAoa:1800,allocations:Array(90).fill(40),aorAllocations:Array(90).fill(20),aoaAllocations:Array(90).fill(20),severanceAmount: 2400, severanceTiming: 'year', severanceYear: 2060 }, random = stressRandom(42);
   for (let i = 0; i < 1000; i++) {
-    c.stressReturnMode=i%2?'free':'anchored';c.stressWithdrawalCap=i%3===0;
+    c.stressReturnMode=i%2?'free':'anchored';c.stressWithdrawalCap=i%3===0;c.finalSavingSafeOnly=i%2===0;
     c.severanceAllocation=i%2?'custom':'annual';c.severanceSafePct=50;c.severanceVtiPct=10;c.severanceAorPct=15;c.severanceAoaPct=15;
     const path = monthlyMarketPath(c, random);
     for (const policy of ['none', 'annual', 'conditional']) {

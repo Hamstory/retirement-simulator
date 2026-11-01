@@ -31,6 +31,7 @@
  <div class="field"><label for="savingGrowth">저축액의 매년 증가분</label><div class="inputbox"><input id="savingGrowth" type="number" min="-100" max="1000000" step="0.5"><span class="unit" id="savingGrowthUnit">%</span></div></div>
  <div class="field"><label for="safeSavingPct">새 저축의 안전자산 기본 비중</label><div class="inputbox"><input id="safeSavingPct" type="number" min="0" max="100" step="5"><span class="unit">%</span></div><p class="help">아래 연도별 표에서 따로 입력한 해에는 해당 비중이 우선 적용됩니다.</p></div>
  <div class="field"><label for="retireYears">앞으로 저축하는 기간</label><div class="range-line"><input id="retireYears" type="range" min="0" max="30" step="1"><span class="range-value" id="retireYearsLabel">10년</span></div><p class="help" id="retireNote"></p></div>
+ <label class="checkline"><input id="finalSavingSafeOnly" type="checkbox">마지막 저축 연도는 안전자산에만 투자</label><p class="help" id="finalSavingSafeNote"></p>
  <div class="twocol"><div class="field"><label for="horizon">은퇴 후 계산 기간</label><div class="inputbox"><input id="horizon" type="number" min="1" max="60" step="1"><span class="unit">년</span></div></div><div class="field"><label for="inflation">연 물가상승률</label><div class="inputbox"><input id="inflation" type="number" min="-5" max="20" step="0.5"><span class="unit">%</span></div></div></div>
  </section>
  <section class="section severance-panel" aria-labelledby="severanceHeading"><div class="section-title"><span class="step">03</span><h2 id="severanceHeading">퇴직금</h2></div>
