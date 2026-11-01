@@ -19,7 +19,7 @@ test('STR-002 DOM ID는 유일하고 모든 label과 기본 필드의 대상이 
   const ids = [...body.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
   assert.equal(new Set(ids).size, ids.length);
   for (const [, id] of body.matchAll(/\bfor="([^"]+)"/g)) assert.ok(ids.includes(id), id);
-  for (const key of Object.keys(DEFAULTS).filter(k => !['allocations', 'safeAllocations', 'budgetItems', 'extraAssets'].includes(k))) assert.ok(ids.includes(key), key);
+  for (const key of Object.keys(DEFAULTS).filter(k => !Array.isArray(DEFAULTS[k]))) assert.ok(ids.includes(key), key);
 });
 test('STR-003 HTML은 외부 런타임 없이 완성된 한 파일이다', () => {
   assert.ok(!/<!-- (STYLES|ENGINE|APP) -->/.test(html));

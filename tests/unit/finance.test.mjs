@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULTS, simulate, simulateMonthly, normalizeConfig, validateConfig, contributionFor,
-  monthlyBudgetTotal, stressRandom, monthlyMarketPath, crashMarketPath, stressPathSummary, severanceYearFor, near,
+  monthlyBudgetTotal, stressRandom, randomMarketPath, monthlyMarketPath, crashMarketPath, stressPathSummary, severanceYearFor, near,
 } from '../helpers/engine.mjs';
 
 const base = () => structuredClone(DEFAULTS);
@@ -324,4 +324,72 @@ test('TC-043 별도 배분 설정은 기존 기록과 호환되고 잘못된 비
   // Inactive custom inputs never affect the inherited allocation or trap switching back.
   const inherited={...fixture(),severanceAllocation:'annual',severanceSafePct:NaN,severanceVtiPct:120};
   assert.equal(validateConfig(inherited),'');assert.deepEqual(simulate(inherited),simulate(fixture()));
+});
+
+const fourFixture=()=>({...fixture(),aorPriceGrowth:0,aoaPriceGrowth:0,aorYield:0,aoaYield:0,aorDividendGrowth:0,aoaDividendGrowth:0});
+test('TC-044 네 ETF의 초기 투자·저축·추가 자산·퇴직금 배분을 보존한다',()=>{
+ const c={...fourFixture(),initialVti:100,initialSchd:200,initialAor:300,initialAoa:400,initialCash:1000,deployCash:500,retireYears:1,annualSaving:1000,monthlyBudget:0,severanceAmount:1000,severanceAllocation:'custom',severanceVtiPct:10,severanceAorPct:20,severanceAoaPct:30,severanceSafePct:40};
+ c.allocations.fill(10);c.aorAllocations.fill(30);c.aoaAllocations.fill(40);c.extraAssets[0]=500;
+ for(const rows of [simulate(c),simulateMonthly(c,[],'none')]){
+  for(const [key,value] of Object.entries({vti:150,schd:300,aor:450,aoa:600,cash:500,total:2000}))near(rows[0][key],value);
+  for(const [key,value] of Object.entries({vti:370,schd:540,aor:1010,aoa:1380,cash:1200,total:4500,extraAsset:1500,severance:1000,aorContribution:240,aoaContribution:320}))near(rows[1][key],value);
+  near(rows.at(-1).total,4500);
+ }
+ const immediate=simulate({...c,retireYears:0})[0];near(immediate.vti,250);near(immediate.aor,650);near(immediate.aoa,900);near(immediate.cash,900);near(immediate.total,3000);
+});
+test('TC-045 AOR·AOA 분배금 성장과 재투자·매도 순서를 계산한다',()=>{
+ const c={...fourFixture(),initialVti:0,initialCash:0,initialAor:1000,initialAoa:2000,retireYears:1,monthlyBudget:0,aorPriceGrowth:10,aoaPriceGrowth:20,aorYield:10,aoaYield:5,aorDividendGrowth:10,aoaDividendGrowth:20,dividendTax:0,withdrawMode:'extra'};
+ const rows=simulate(c);near(rows[1].aor,1200);near(rows[1].aoa,2500);near(rows[1].netDividend,200);near(rows[2].netDividend,245);near(rows[2].income,245);near(rows[2].aor,1320);near(rows[2].aoa,3000);
+ const sale={...fourFixture(),initialVti:100,initialSchd:100,initialAor:100,initialAoa:100,initialCash:100,horizon:1,withdrawMode:'extra',annualWithdrawal:250,withdrawSource:'vtiFirst'};
+ let r=simulate(sale)[1];near(r.vti,0);near(r.schd,0);near(r.aor,50);near(r.aoa,100);near(r.cash,100);near(r.income,250);near(r.total,250);
+ r=simulate({...sale,withdrawSource:'stocks'})[1];for(const k of ['vti','schd','aor','aoa'])near(r[k],37.5);near(r.total,250);
+});
+test('TC-046 AOR·AOA는 월 생활비 재원이며 별도 현금 완충재가 아니다',()=>{
+ const c={...fourFixture(),initialVti:0,initialCash:100,initialAor:600,initialAoa:400,horizon:2};
+ for(const policy of ['none','annual','conditional']){
+  const rows=simulateMonthly(c,[],policy);near(rows[0].total,1100);near(rows[0].cash,100);
+  for(const r of rows.slice(1)){near(r.total,1100-r.elapsed*120);near(r.total,r.vti+r.schd+r.aor+r.aoa+r.cash);near(r.income,120);}
+  near(rows[1].cash,policy==='none'?0:360);
+ }
+ const reinvest={...fourFixture(),initialVti:0,initialCash:1000,horizon:1,stressCashCap:true};reinvest.allocations.fill(0);reinvest.aorAllocations.fill(25);reinvest.aoaAllocations.fill(75);
+ let r=simulateMonthly(reinvest,[],'none')[1];near(r.aor,130);near(r.aoa,390);near(r.cash,360);near(r.total,880);
+ r=simulateMonthly({...c,initialCash:0,monthlyBudget:100,stressWithdrawalCap:true},[],'none')[1];near(r.spendingCap,50);near(r.income,50);near(r.workNeeded,1150);near(r.total,950);
+ const priority=simulateMonthly({...fourFixture(),initialVti:100,initialSchd:100,initialAor:100,initialAoa:100,initialCash:0,horizon:1,monthlyBudget:250/12,stressStockSale:'vtiFirst'},[],'none')[1];near(priority.vti,0);near(priority.schd,0);near(priority.aor,50);near(priority.aoa,100);
+});
+test('TC-047 네 ETF의 고정·자유 무작위 경로와 상관 모형을 구분한다',()=>{
+ const c={...fourFixture(),retireYears:2,horizon:3,aorPriceGrowth:4,aoaPriceGrowth:6};
+ const compound=(p,k)=>p.flatMap(r=>r.months).reduce((n,m)=>n*(1+m[k+'Return']),1);
+ const a=monthlyMarketPath(c,stressRandom(42)),b=monthlyMarketPath(c,stressRandom(42));assert.deepEqual(a,b);
+ for(const k of ['vti','schd','aor','aoa'])near(compound(a,k),(1+c[k+'PriceGrowth']/100)**5);
+ const free={...c,stressReturnMode:'free'};assert.ok(Math.abs(compound(monthlyMarketPath(free,stressRandom(42)),'aor')-1.04**5)>1e-4);
+ const zero={...c,stressVtiVol:0,stressSchdVol:0,stressAorVol:0,stressAoaVol:0};
+ for(const m of monthlyMarketPath(zero,stressRandom(43)).flatMap(r=>r.months))for(const k of ['vti','schd','aor','aoa'])near(m[k+'Return'],(1+c[k+'PriceGrowth']/100)**(1/12)-1);
+ const corr={...c,stressCorr:100},months=monthlyMarketPath(corr,stressRandom(44)).flatMap(r=>r.months);
+ for(const m of months){const z=k=>(Math.log1p(m[k+'Return'])-Math.log1p(c[k+'PriceGrowth']/100)/12)/c['stress'+k[0].toUpperCase()+k.slice(1)+'Vol'];near(z('vti'),z('aor'));near(z('vti'),z('aoa'));}
+ const retired={...c,stressScope:'retirement',initialAor:1000,initialAoa:2000};near(simulateMonthly(retired,monthlyMarketPath(retired,stressRandom(42)))[2].total,simulate(retired)[2].total);
+ const annual=randomMarketPath(c,stressRandom(42));assert.ok(annual.every(r=>Number.isFinite(r.aorReturn)&&Number.isFinite(r.aoaReturn)));
+});
+test('TC-048 AOR·AOA 급락·회복은 개별 급락 가정을 따른다',()=>{
+ const c={...fourFixture(),retireYears:0,horizon:6,stressCrashDuration:1,stressAorCrash:20,stressAoaCrash:30,aorPriceGrowth:4,aoaPriceGrowth:6};
+ for(const late of [false,true]){
+  const p=crashMarketPath(c,late);for(const k of ['aor','aoa'])near(p.flatMap(r=>r.months).reduce((n,m)=>n*(1+m[k+'Return']),1),(1+c[k+'PriceGrowth']/100)**6);
+  near(p[late?4:0].aorReturn,-.2);near(p[late?4:0].aoaReturn,-.3);assert.ok(p[late?5:1].aorReturn>.04);
+ }
+ const free=crashMarketPath({...c,stressReturnMode:'free'});near(free[0].aorReturn,-.2);near(free[0].aoaReturn,-.3);assert.deepEqual(free[1],{});
+});
+test('TC-049 이전 기록은 새 ETF 비중 0으로 복원되고 비율 합계를 검증한다',()=>{
+ const old=fourFixture();for(const key of Object.keys(old))if(/aor|aoa/i.test(key))delete old[key];const c=normalizeConfig(old);
+ assert.ok(c.aorAllocations.every(v=>v===0));assert.ok(c.aoaAllocations.every(v=>v===0));assert.equal(c.initialAor,0);assert.equal(c.severanceAoaPct,0);
+ for(const r of simulate(c)){near(r.aor,0);near(r.aoa,0);near(r.total,r.vti+r.schd+r.cash);}
+ for(const patch of [{initialAor:-1},{initialAoa:NaN},{aorYield:31},{aoaPriceGrowth:51},{aorDividendGrowth:Infinity},{stressAorVol:61},{stressAoaCrash:91},{aorAllocations:Array(90).fill(30)},{aoaAllocations:[]},{severanceAllocation:'custom',severanceAorPct:30},{severanceAllocation:'custom',severanceAoaPct:-1}])assert.ok(validateConfig({...base(),...patch}));
+ assert.throws(()=>simulate(fourFixture(),[{aorReturn:-1}]));assert.throws(()=>simulateMonthly(fourFixture(),[{months:Array.from({length:12},()=>({vtiReturn:0,schdReturn:0,aoaReturn:NaN}))}]));
+ const short=normalizeConfig({...base(),allocations:Array(30).fill(10),aorAllocations:Array(30).fill(30),aoaAllocations:Array(30).fill(40)});assert.equal(short.aorAllocations[89],30);assert.equal(short.aoaAllocations[89],40);assert.equal(validateConfig(short),'');
+});
+test('TC-050 네 ETF 월별 손실·분배금 삭감·수령 후 총자산을 추적한다',()=>{
+ const c={...fourFixture(),initialVti:0,initialCash:0,initialAor:1000,aorYield:12,dividendTax:0,monthlyBudget:0,horizon:2};
+ const months=Array.from({length:12},(_,i)=>({vtiReturn:0,schdReturn:0,aorReturn:i===11?-.4:0,aoaReturn:0}));
+ const rows=simulateMonthly(c,[{aorReturn:-.4,months}],'none');near(rows[1].netDividend,120);near(rows[1].aor,600);near(rows[1].total,720);near(rows[2].netDividend,108);
+ const late={...fourFixture(),initialVti:0,initialCash:0,severanceTiming:'year',severanceYear:2028,severanceAmount:1000,severanceAllocation:'custom',severanceSafePct:0,severanceVtiPct:0,severanceAorPct:40,severanceAoaPct:60};
+ const paid=simulateMonthly(late,[],'none');near(paid[2].income,0);assert.equal(paid[2].firstGapMonth,1);near(paid[2].aor,400);near(paid[2].aoa,600);near(paid[3].income,120);near(paid[3].total,880);
+ const recovered=simulateMonthly({...fourFixture(),initialVti:0,initialCash:0,initialAor:1000,initialAoa:1000},[],'conditional')[1];assert.equal(recovered.refillEligible,true);near(recovered.cash,360);near(recovered.refillSold,360);near(recovered.total,1880);near(recovered.income,120);
 });

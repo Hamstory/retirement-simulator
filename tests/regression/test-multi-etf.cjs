@@ -1,0 +1,30 @@
+// Isolated DOM integration, not native-browser visual QA.
+const assert=require('node:assert/strict'),{boot}=require('./test-records.cjs');
+(async()=>{
+ const app=boot(new Map(),{timers:fn=>setImmediate(fn)}),n=app.nodes,input=async(id,value)=>{n[id].value=String(value);await n[id].trigger('input');};
+ n.assetChart.getBoundingClientRect=()=>({left:0,top:0,width:900,height:280});
+ const cells=Array.from({length:10},()=>({})),edit=async(kind,value)=>n.allocationRows.trigger('input',{target:{matches:()=>true,dataset:{year:'0',kind},value:String(value),closest:()=>({querySelectorAll:()=>cells})}});
+ for(const [id,value] of Object.entries({initialVti:100,initialSchd:200,initialAor:300,initialAoa:400,initialCash:500,annualSaving:1000,retireYears:1,horizon:3,inflation:0,monthlyBudget:0,cashYield:0,stressCount:100,stressVtiVol:0,stressSchdVol:0,stressAorVol:0,stressAoaVol:0}))await input(id,value);
+ for(const k of ['vti','schd','aor','aoa'])for(const suffix of ['PriceGrowth','Yield','DividendGrowth'])await input(k+suffix,0);
+ n.stressCashCap.checked=false;await n.stressCashCap.trigger('input');
+ await edit('vti',0);await edit('aor',40);await edit('aoa',60);await edit('extra',100);
+ assert.equal(n.errorBox.textContent,'');assert.ok(cells[9].innerHTML.startsWith('0 / 0 / 352 / 528 / 220'));assert.ok(n.allocationRows.innerHTML.includes('data-kind="aor"'));assert.ok(n.allocationRows.innerHTML.includes('data-kind="aoa"'));
+ await input('severanceAmount',1000);await input('severanceAllocation','custom');await input('severanceVtiPct',0);await input('severanceSafePct',50);await input('severanceAorPct',20);await input('severanceAoaPct',30);
+ assert.equal(n.severanceSchdPct.textContent,'0.0%');assert.ok(n.severanceNote.textContent.includes('AOR 20.0% (200만원)'));assert.ok(n.severanceNote.textContent.includes('AOA 30.0% (300만원)'));
+ await edit('extra',100);assert.ok(cells[9].innerHTML.startsWith('0 / 0 / 552 / 828 / 720'));
+ const r=n.assetChart._chartData.rows[1];assert.equal(r.aor,852);assert.equal(r.aoa,1228);assert.equal(r.cash,1220);assert.equal(r.total,3600);
+ assert.ok(n.activeAorRates.textContent.includes('AOR'));assert.ok(n.activeAoaRates.textContent.includes('AOA'));assert.ok(n.splitAor.textContent.includes('852'));assert.ok(n.splitAoa.textContent.includes('1,228'));
+ assert.deepEqual(Array.from(n.assetChart._chartData.series,s=>s.label),['VTI','SCHD','AOR','AOA','안전자산','총자산']);
+ await n.assetChart.trigger('keydown',{key:'Home'});assert.ok(n.chartTooltip.textContent.includes('AOR300 만원'));assert.ok(n.chartTooltip.textContent.includes('AOA400 만원'));
+ await input('severanceAoaPct',60);assert.ok(n.errorBox.textContent);await input('severanceAoaPct',30);assert.equal(n.errorBox.textContent,'');
+ n.historyName.value='가상 혼합 ETF 계획';await n.historyForm.trigger('submit');await input('initialAor',0);await n.historyList.children[0].children[1].children[0].click();assert.equal(app.api.getConfig().initialAor,300);
+ const reload=boot(app.storage);assert.equal(reload.api.getConfig().aorAllocations[0],40);assert.equal(reload.api.getConfig().aoaAllocations[0],60);assert.equal(reload.api.getConfig().severanceAoaPct,30);
+ await n.downloadConfig.click();const json=JSON.parse(app.state.downloads.at(-1).text);await input('initialAoa',0);await n.configFile.trigger('change',{target:{files:[{name:'fictional-multi.json',text:async()=>JSON.stringify(json)}],value:'file'}});assert.equal(app.api.getConfig().initialAoa,400);assert.equal(app.api.getConfig().severanceAorPct,20);
+ await n.exportCsv.click();const csv=app.state.downloads.at(-1).text.trim().split(/\r?\n/).map(l=>l.replace(/^\uFEFF/,'').split(','));assert.ok(csv.every(row=>row.length===csv[0].length));assert.equal(Number(csv[2][csv[0].indexOf('기말AOR_만원')]),852);assert.equal(Number(csv[2][csv[0].indexOf('기말AOA_만원')]),1228);
+ await n.runStress.click();assert.equal(app.api.isRunning(),false);assert.equal(n.stressResults.classList.contains('hidden'),false);assert.equal(n.stressMarketChart._chartData.series.length,4);assert.ok(n.stressMarketNote.textContent.includes('AOR 0.0% / AOA 0.0%'));assert.ok(!n.stressTraceRows.innerHTML.includes('NaN'));
+ await n.exportStress.click();const trace=app.state.downloads.at(-1).text.trim().split(/\r?\n/).map(l=>l.replace(/^\uFEFF/,'').split(','));assert.ok(trace.every(row=>row.length===trace[0].length));for(const h of ['AOR주가수익률_%','AOA주가수익률_%','기말AOR_만원','기말AOA_만원'])assert.ok(trace[0].includes(h));
+ n.bulkRatio.value='10';n.bulkAorRatio.value='30';n.bulkAoaRatio.value='40';n.bulkSafeRatio.value='25';await n.applyRatio.click();assert.ok(app.api.getConfig().aorAllocations.every(v=>v===30));assert.ok(app.api.getConfig().aoaAllocations.every(v=>v===40));assert.equal(app.api.getConfig().severanceAorPct,20);
+ const before=JSON.stringify(app.api.getConfig().aorAllocations);n.bulkAorRatio.value='90';await n.applyRatio.click();assert.equal(JSON.stringify(app.api.getConfig().aorAllocations),before);assert.ok(n.saveStatus.textContent.includes('100% 이하'));
+ const legacy=structuredClone(json);for(const key of Object.keys(legacy))if(/aor|aoa/i.test(key))delete legacy[key];await n.configFile.trigger('change',{target:{files:[{name:'fictional-legacy.json',text:async()=>JSON.stringify(legacy)}],value:'file'}});assert.equal(app.api.getConfig().initialAor,0);assert.ok(app.api.getConfig().aorAllocations.every(v=>v===0));assert.equal(n.errorBox.textContent,'');
+ console.log('PASS: four-ETF allocation, receipts, preview, holdings, tooltips, records, JSON import/export, CSV, stress, bulk validation and legacy migration (isolated DOM).');
+})().catch(e=>{console.error(e);process.exitCode=1;});
