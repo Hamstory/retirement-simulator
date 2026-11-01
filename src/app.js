@@ -1,4 +1,4 @@
-import { DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress } from './engine.js';
+import { DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress } from './engine.js';
 
 'use strict';
 const $=id=>document.getElementById(id),storageKey='retirement-planner-local-v1',historyStorageKey='retirement-planner-records-v1';
@@ -37,8 +37,11 @@ function renderSeverancePanel(){
  const linked=config.severanceTiming==='retirement',year=severanceYearFor(config),field=$('severanceYear');
  field.disabled=linked;field.min=config.startYear;field.max=config.startYear+config.retireYears+config.horizon;
  if(linked){config.severanceYear=year;field.value=year;}
- const index=Math.max(0,year-config.startYear-1),safe=safePctFor(config,index),vti=(100-safe)*stockPctFor(config,index)/100;
- $('severanceNote').textContent=config.severanceAmount>0?year+'년'+(year===config.startYear?' 시작 시점':' 말')+'에 '+cashText(config.severanceAmount)+' 반영 · VTI '+decimal(vti)+'% / SCHD '+decimal(100-safe-vti)+'% / 안전자산 '+decimal(safe)+'%. '+(year===config.startYear?'첫 신규 투자 비율을 사용합니다.':'해당 연도의 신규 투자 비율을 사용합니다.'):'퇴직금을 입력하면 수령 시점과 투자 배분이 표시됩니다. 자동 연결은 저축 종료 연도 말 수령이며, 즉시 퇴직은 시작 시점 수령입니다.';
+ const custom=config.severanceAllocation==='custom',index=Math.max(0,year-config.startYear-1),ratio=severanceAllocationFor(config,index),valid=[ratio.safe,ratio.vti,ratio.schd].every(v=>Number.isFinite(v)&&v>=0&&v<=100)&&(!custom||config.severanceSafePct+config.severanceVtiPct<=100);
+ $('severanceCustomFields').classList.toggle('hidden',!custom);
+ for(const id of ['severanceSafePct','severanceVtiPct'])$(id).disabled=!custom;
+ $('severanceSchdPct').textContent=valid?decimal(ratio.schd)+'%':'비율 확인';
+ $('severanceNote').textContent=!valid?'퇴직금 배분 비율을 확인하세요.':config.severanceAmount>0?year+'년'+(year===config.startYear?' 시작 시점':' 말')+'에 '+cashText(config.severanceAmount)+' 반영 · '+[['VTI',ratio.vti],['SCHD',ratio.schd],['안전자산',ratio.safe]].map(([name,pct])=>name+' '+decimal(pct)+'% ('+cashText(config.severanceAmount*pct/100)+')').join(' / ')+'. '+(custom?'퇴직금만 별도 비율을 사용합니다. 저축·기타 추가 자산의 비율은 연도별 설정을 따릅니다.':year===config.startYear?'첫 신규 투자 비율을 사용합니다.':'해당 연도의 신규 투자 비율을 사용합니다.')+' 스트레스 테스트의 수령 후 안전자산 보충·상한 규칙은 그대로 적용됩니다.':'퇴직금을 입력하면 수령 시점과 투자 배분이 표시됩니다. 자동 연결은 저축 종료 연도 말 수령이며, 즉시 퇴직은 시작 시점 수령입니다.';
 }
 function renderAllocation(){
  const count=Math.max(1,config.retireYears+config.horizon);let html='';
@@ -47,11 +50,11 @@ function renderAllocation(){
   html+='<tr><td>'+year+'년 · '+(i<config.retireYears?'저축':'은퇴')+'</td><td>'+amount(cells.saving)+'</td><td><input class="allocation-input" style="width:100px" type="number" min="0" max="10000000" step="100" value="'+(config.extraAssets[i]||'')+'" placeholder="0" data-year="'+i+'" data-kind="extra" aria-label="'+year+'년 세후 기타 추가 자산 · 만원">'+(severanceFor(config,i+1)>0?'<span class="receipt-note">퇴직금 +'+amount(severanceFor(config,i+1))+'</span>':'')+'</td><td><input class="allocation-input" type="number" min="0" max="100" step="5" value="'+(config.safeAllocations[i]??'')+'" placeholder="'+config.safeSavingPct+'" data-year="'+i+'" data-kind="safe" aria-label="'+year+'년 안전자산 비율"></td><td><input class="allocation-input" type="number" min="0" max="100" step="5" value="'+ratio+'" data-year="'+i+'" data-kind="vti" aria-label="'+year+'년 주식 내 VTI 비율"></td><td>'+decimal(100-ratio)+'</td><td>'+cells.percent+'</td><td>'+cells.money+'</td></tr>';
  }
  $('allocationRows').innerHTML=html;
- $('allocationNote').textContent='안전자산 공란은 기본 비중('+decimal(config.safeSavingPct)+'%)을 사용합니다. 퇴직금 패널의 금액은 별도로 자동 합산합니다. 이 표에는 퇴직금 외의 기타 추가 자산만 세후 명목금액으로 입력하세요. 그해 말 저축액과 합쳐 같은 비율로 배분하며, 수령 전 생활비나 그해 수익에는 반영하지 않습니다. 저축 종료 후에도 추가 자산을 입력할 수 있습니다. 첫 행의 주식 내 비율은 최초 현금 투자에도 적용합니다.';
+ $('allocationNote').textContent='안전자산 공란은 기본 비중('+decimal(config.safeSavingPct)+'%)을 사용합니다. 이 표에는 퇴직금 외의 기타 추가 자산만 세후 명목금액으로 입력하세요. 저축·기타 추가 자산은 해당 행의 비율로, 퇴직금은 패널에서 선택한 방식으로 배분합니다. 전체 배분 비율과 금액은 이를 합산한 결과입니다. 연말 수령액은 수령 전 생활비나 그해 수익에 반영하지 않습니다. 저축 종료 후에도 추가 자산을 입력할 수 있습니다. 첫 행의 주식 내 비율은 최초 현금 투자에도 적용합니다.';
 }
 function allocationCells(i){
- const saving=i<config.retireYears?contributionFor(config,i):0,total=saving+extraAssetFor(config,i+1),safePct=safePctFor(config,i),vtiPct=(100-safePct)*stockPctFor(config,i)/100,schdPct=100-safePct-vtiPct;
- return {saving,percent:decimal(vtiPct)+' / '+decimal(schdPct)+' / '+decimal(safePct),money:amount(total*vtiPct/100)+' / '+amount(total*schdPct/100)+' / '+amount(total*safePct/100)+'<div class="ratio-bar"><i style="width:'+vtiPct+'%"></i><i style="width:'+schdPct+'%;background:#be8538"></i><i style="width:'+safePct+'%;background:#9aafa3"></i></div>'};
+ const saving=i<config.retireYears?contributionFor(config,i):0,total=saving+extraAssetFor(config,i+1),receipt=receiptAllocationFor(config,i+1),annualSafe=safePctFor(config,i),annualVti=(100-annualSafe)*stockPctFor(config,i)/100,safe=saving*annualSafe/100+receipt.safe,vti=saving*annualVti/100+receipt.vti,schd=saving*(100-annualSafe-annualVti)/100+receipt.schd,safePct=total>0?safe/total*100:annualSafe,vtiPct=total>0?vti/total*100:annualVti,schdPct=100-safePct-vtiPct;
+ return {saving,percent:decimal(vtiPct)+' / '+decimal(schdPct)+' / '+decimal(safePct),money:amount(vti)+' / '+amount(schd)+' / '+amount(safe)+'<div class="ratio-bar"><i style="width:'+vtiPct+'%"></i><i style="width:'+schdPct+'%;background:#be8538"></i><i style="width:'+safePct+'%;background:#9aafa3"></i></div>'};
 }
 let tooltipChart=null;
 function hideChartTooltip(){tooltipChart=null;$('chartTooltip').classList.add('hidden');$('chartHoverLine').classList.add('hidden');}

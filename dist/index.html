@@ -48,6 +48,9 @@
  <div class="field"><label for="severanceAmount">세후 예상 수령액</label><div class="inputbox"><input id="severanceAmount" type="number" min="0" max="10000000" step="100"><span class="unit">만원</span></div><p class="help">수령 시점의 세후 명목금액입니다. 0이면 반영하지 않습니다.</p></div>
  <div class="field"><label for="severanceTiming">퇴직금 수령 시점</label><div class="inputbox"><select id="severanceTiming"><option value="retirement">퇴직 연도에 자동 연결</option><option value="year">수령 연도 직접 지정</option></select></div></div>
  <div class="field"><label for="severanceYear">퇴직금 수령 연도</label><div class="inputbox"><input id="severanceYear" type="number" min="2020" max="2190" step="1"><span class="unit">년</span></div></div>
+ <div class="field"><label for="severanceAllocation">퇴직금 배분 방식</label><div class="inputbox"><select id="severanceAllocation"><option value="annual">수령 연도의 신규 투자 비율 사용</option><option value="custom">퇴직금만 별도 비율 지정</option></select></div></div>
+ <div id="severanceCustomFields" class="hidden"><div class="field"><label for="severanceVtiPct">퇴직금 전체 중 VTI</label><div class="inputbox"><input id="severanceVtiPct" type="number" min="0" max="100" step="0.1"><span class="unit">%</span></div></div>
+ <div class="field"><label for="severanceSafePct">퇴직금 전체 중 안전자산</label><div class="inputbox"><input id="severanceSafePct" type="number" min="0" max="100" step="0.1"><span class="unit">%</span></div><p class="help">두 비율의 합계는 100% 이하로 입력하세요. 나머지는 SCHD입니다: <span id="severanceSchdPct"></span></p></div></div>
  <p id="severanceNote" class="soft-note"></p><p class="help">이미 현재 금융자산이나 아래 ‘기타 추가 자산’에 포함한 퇴직금은 이곳에 중복 입력하지 마세요. 퇴직소득세나 계좌별 인출 제한은 계산하지 않습니다.</p>
  </section>
  <section class="section"><div class="section-title"><span class="step">04</span><h2>은퇴 후 생활비</h2></div>
@@ -143,6 +146,7 @@ DEFAULTS.allocations=Array(90).fill(80);
 DEFAULTS.safeAllocations=Array(90).fill(null);
 DEFAULTS.extraAssets=Array(90).fill(0);
 Object.assign(DEFAULTS,{severanceAmount:0,severanceTiming:'retirement',severanceYear:2026});
+Object.assign(DEFAULTS,{severanceAllocation:'annual',severanceSafePct:20,severanceVtiPct:64});
 Object.assign(DEFAULTS,{stressWithdrawalCap:false,stressMaxWithdrawalRate:5});
 Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,stressBufferFloor:1,stressRecoveryDrawdown:10,stressStockSale:'proportional',stressReturnMode:'anchored',stressCashCap:true});
 function normalizeConfig(incoming){
@@ -156,6 +160,14 @@ function stockPctFor(c,index){return c.allocations[index]??c.allocations[c.alloc
 function severanceYearFor(c){return c.severanceTiming==='retirement'?c.startYear+c.retireYears:c.severanceYear;}
 function severanceFor(c,elapsed){return c.startYear+elapsed===severanceYearFor(c)?c.severanceAmount:0;}
 function extraAssetFor(c,elapsed){return (elapsed>0?(c.extraAssets?.[elapsed-1]??0):0)+severanceFor(c,elapsed);}
+function severanceAllocationFor(c,index){
+ const custom=c.severanceAllocation==='custom',safe=custom?c.severanceSafePct:safePctFor(c,index),vti=custom?c.severanceVtiPct:(100-safe)*stockPctFor(c,index)/100;
+ return {safe,vti,schd:Math.max(0,100-safe-vti)};
+}
+function receiptAllocationFor(c,elapsed){
+ const index=Math.max(0,elapsed-1),other=elapsed>0?(c.extraAssets?.[index]??0):0,severance=severanceFor(c,elapsed),ratio=severanceAllocationFor(c,index),otherSafe=other*safePctFor(c,index)/100,otherVti=(other-otherSafe)*stockPctFor(c,index)/100;
+ return {safe:otherSafe+severance*ratio.safe/100,vti:otherVti+severance*ratio.vti/100,schd:Math.max(0,other-otherSafe-otherVti)+severance*ratio.schd/100};
+}
 function monthlyBudgetTotal(items){return items.reduce((sum,item)=>sum+item.amount/(item.frequency==='annual'?12:1),0);}
 function validateConfig(c){
  const finiteKeys=['startYear','birthYear','initialVti','initialSchd','initialCash','deployCash','annualSaving','savingGrowth','safeSavingPct','retireYears','horizon','inflation','annualWithdrawal','monthlyBudget','vtiPriceGrowth','schdPriceGrowth','vtiYield','schdYield','vtiDividendGrowth','schdDividendGrowth','cashYield','dividendTax','cashTax'];
@@ -176,6 +188,7 @@ function validateConfig(c){
  if(c.extraAssets!==undefined&&(!Array.isArray(c.extraAssets)||(c.extraAssets.length<30||c.extraAssets.length>90)||c.extraAssets.some(v=>!Number.isFinite(v)||v<0||v>10000000)))return '연도별 추가 자산은 0~10,000,000만원 범위로 입력하세요.';
  if(!Number.isFinite(c.severanceAmount)||c.severanceAmount<0||c.severanceAmount>10000000||!['retirement','year'].includes(c.severanceTiming))return '세후 퇴직금은 0~10,000,000만원, 수령 시점은 퇴직 연도 또는 직접 지정으로 입력하세요.';
  if(c.severanceTiming==='year'&&(!Number.isInteger(c.severanceYear)||c.severanceYear<c.startYear||c.severanceYear>c.startYear+c.retireYears+c.horizon))return '퇴직금 수령 연도는 시작 연도부터 계산 마지막 연도 사이의 정수로 입력하세요.';
+ if(!['annual','custom'].includes(c.severanceAllocation)||(c.severanceAllocation==='custom'&&(![c.severanceSafePct,c.severanceVtiPct].every(v=>Number.isFinite(v)&&v>=0&&v<=100)||c.severanceSafePct+c.severanceVtiPct>100)))return '퇴직금 배분 방식을 확인하세요. 별도 VTI·안전자산 비율은 각각 0~100%, 합계는 100% 이하로 입력하세요.';
  return validateStress(c);
 }
 function validateStress(c){
@@ -195,8 +208,8 @@ function simulate(c,marketPath=[],endElapsed=c.retireYears+c.horizon){
  const rows=[];const alloc0=c.allocations[0]/100;
  let vShares=c.initialVti+c.deployCash*alloc0,sShares=c.initialSchd+c.deployCash*(1-alloc0),cash=c.initialCash-c.deployCash;
  let vp=1,sp=1,vd=c.vtiYield/100,sd=c.schdYield/100;
- const initialSeverance=severanceFor(c,0),initialSafe=initialSeverance*safePctFor(c,0)/100;
- cash+=initialSafe;vShares+=(initialSeverance-initialSafe)*alloc0;sShares+=(initialSeverance-initialSafe)*(1-alloc0);
+ const initialSeverance=severanceFor(c,0),initialReceipt=receiptAllocationFor(c,0);
+ cash+=initialReceipt.safe;vShares+=initialReceipt.vti;sShares+=initialReceipt.schd;
  const valuation=(elapsed)=>({elapsed,year:c.startYear+elapsed,age:c.startYear+elapsed-c.birthYear,vti:vShares*vp,schd:sShares*sp,cash,total:vShares*vp+sShares*sp+cash,deflator:Math.pow(1+c.inflation/100,elapsed)});
  rows.push({...valuation(0),working:c.retireYears>0,saving:0,extraAsset:initialSeverance,severance:initialSeverance,vtiContribution:0,schdContribution:0,safeContribution:0,netDividend:0,netInterest:0,grossDividend:0,withdrawal:0,stockSold:0,cashUsed:0,requestedWithdrawal:0,unfunded:0,income:0,budget:c.monthlyBudget*12});
  for(let t=1;t<=Math.min(endElapsed,c.retireYears+c.horizon);t++){
@@ -238,8 +251,8 @@ function simulate(c,marketPath=[],endElapsed=c.retireYears+c.horizon){
    income=c.withdrawMode==='budget'?Math.min(naturalIncome,budget)+withdrawal:naturalIncome+withdrawal;
    if(c.withdrawMode==='budget')cash+=Math.max(0,naturalIncome-budget);
   }
-  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
-  cash+=extraSafe;vShares+=extraVti/vp;sShares+=(extraAsset-extraSafe-extraVti)/sp;
+  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),receipt=receiptAllocationFor(c,t);
+  cash+=receipt.safe;vShares+=receipt.vti/vp;sShares+=receipt.schd/sp;
   rows.push({...valuation(t),working,saving,extraAsset,severance,vtiContribution,schdContribution,safeContribution,netDividend,netInterest,grossDividend,withdrawal,stockSold,cashUsed,requestedWithdrawal,unfunded,income,budget,marketMonths:market.months,vtiReturn:vReturn,schdReturn:sReturn,vtiDividendFactor:vFactor,schdDividendFactor:sFactor});
   vd*=1+c.vtiDividendGrowth/100;sd*=1+c.schdDividendGrowth/100;
  }
@@ -307,8 +320,8 @@ function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
    vd*=Math.pow(1+c.vtiDividendGrowth/100,1/12);sd*=Math.pow(1+c.schdDividendGrowth/100,1/12);
   }
   // Net one-off receipts arrive at year-end, never funding an earlier month's shortfall.
-  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
-  cash+=extraSafe;vShares+=extraVti/vp;sShares+=(extraAsset-extraSafe-extraVti)/sp;
+  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),receipt=receiptAllocationFor(c,t);
+  cash+=receipt.safe;vShares+=receipt.vti/vp;sShares+=receipt.schd/sp;
   const nextBudget=futureYearBudget(c,t),cashTarget=nextBudget*c.stressBufferYears,cashFloor=nextBudget*c.stressBufferFloor,healthy=indexValue()>=yearStartIndex*(1-1e-10)&&indexValue()>=peakIndex*(1-c.stressRecoveryDrawdown/100)*(1-1e-10);
   const replenishTo=policy==='annual'?cashTarget:policy==='conditional'?(healthy?cashTarget:cashFloor):0;
   if(t<c.retireYears+c.horizon&&cash<replenishTo){refillSold=sell(replenishTo-cash);cash+=refillSold;if(indexValue()<peakIndex*(1-1e-8))downMarketSold+=refillSold;}
@@ -405,8 +418,11 @@ function renderSeverancePanel(){
  const linked=config.severanceTiming==='retirement',year=severanceYearFor(config),field=$('severanceYear');
  field.disabled=linked;field.min=config.startYear;field.max=config.startYear+config.retireYears+config.horizon;
  if(linked){config.severanceYear=year;field.value=year;}
- const index=Math.max(0,year-config.startYear-1),safe=safePctFor(config,index),vti=(100-safe)*stockPctFor(config,index)/100;
- $('severanceNote').textContent=config.severanceAmount>0?year+'년'+(year===config.startYear?' 시작 시점':' 말')+'에 '+cashText(config.severanceAmount)+' 반영 · VTI '+decimal(vti)+'% / SCHD '+decimal(100-safe-vti)+'% / 안전자산 '+decimal(safe)+'%. '+(year===config.startYear?'첫 신규 투자 비율을 사용합니다.':'해당 연도의 신규 투자 비율을 사용합니다.'):'퇴직금을 입력하면 수령 시점과 투자 배분이 표시됩니다. 자동 연결은 저축 종료 연도 말 수령이며, 즉시 퇴직은 시작 시점 수령입니다.';
+ const custom=config.severanceAllocation==='custom',index=Math.max(0,year-config.startYear-1),ratio=severanceAllocationFor(config,index),valid=[ratio.safe,ratio.vti,ratio.schd].every(v=>Number.isFinite(v)&&v>=0&&v<=100)&&(!custom||config.severanceSafePct+config.severanceVtiPct<=100);
+ $('severanceCustomFields').classList.toggle('hidden',!custom);
+ for(const id of ['severanceSafePct','severanceVtiPct'])$(id).disabled=!custom;
+ $('severanceSchdPct').textContent=valid?decimal(ratio.schd)+'%':'비율 확인';
+ $('severanceNote').textContent=!valid?'퇴직금 배분 비율을 확인하세요.':config.severanceAmount>0?year+'년'+(year===config.startYear?' 시작 시점':' 말')+'에 '+cashText(config.severanceAmount)+' 반영 · '+[['VTI',ratio.vti],['SCHD',ratio.schd],['안전자산',ratio.safe]].map(([name,pct])=>name+' '+decimal(pct)+'% ('+cashText(config.severanceAmount*pct/100)+')').join(' / ')+'. '+(custom?'퇴직금만 별도 비율을 사용합니다. 저축·기타 추가 자산의 비율은 연도별 설정을 따릅니다.':year===config.startYear?'첫 신규 투자 비율을 사용합니다.':'해당 연도의 신규 투자 비율을 사용합니다.')+' 스트레스 테스트의 수령 후 안전자산 보충·상한 규칙은 그대로 적용됩니다.':'퇴직금을 입력하면 수령 시점과 투자 배분이 표시됩니다. 자동 연결은 저축 종료 연도 말 수령이며, 즉시 퇴직은 시작 시점 수령입니다.';
 }
 function renderAllocation(){
  const count=Math.max(1,config.retireYears+config.horizon);let html='';
@@ -415,11 +431,11 @@ function renderAllocation(){
   html+='<tr><td>'+year+'년 · '+(i<config.retireYears?'저축':'은퇴')+'</td><td>'+amount(cells.saving)+'</td><td><input class="allocation-input" style="width:100px" type="number" min="0" max="10000000" step="100" value="'+(config.extraAssets[i]||'')+'" placeholder="0" data-year="'+i+'" data-kind="extra" aria-label="'+year+'년 세후 기타 추가 자산 · 만원">'+(severanceFor(config,i+1)>0?'<span class="receipt-note">퇴직금 +'+amount(severanceFor(config,i+1))+'</span>':'')+'</td><td><input class="allocation-input" type="number" min="0" max="100" step="5" value="'+(config.safeAllocations[i]??'')+'" placeholder="'+config.safeSavingPct+'" data-year="'+i+'" data-kind="safe" aria-label="'+year+'년 안전자산 비율"></td><td><input class="allocation-input" type="number" min="0" max="100" step="5" value="'+ratio+'" data-year="'+i+'" data-kind="vti" aria-label="'+year+'년 주식 내 VTI 비율"></td><td>'+decimal(100-ratio)+'</td><td>'+cells.percent+'</td><td>'+cells.money+'</td></tr>';
  }
  $('allocationRows').innerHTML=html;
- $('allocationNote').textContent='안전자산 공란은 기본 비중('+decimal(config.safeSavingPct)+'%)을 사용합니다. 퇴직금 패널의 금액은 별도로 자동 합산합니다. 이 표에는 퇴직금 외의 기타 추가 자산만 세후 명목금액으로 입력하세요. 그해 말 저축액과 합쳐 같은 비율로 배분하며, 수령 전 생활비나 그해 수익에는 반영하지 않습니다. 저축 종료 후에도 추가 자산을 입력할 수 있습니다. 첫 행의 주식 내 비율은 최초 현금 투자에도 적용합니다.';
+ $('allocationNote').textContent='안전자산 공란은 기본 비중('+decimal(config.safeSavingPct)+'%)을 사용합니다. 이 표에는 퇴직금 외의 기타 추가 자산만 세후 명목금액으로 입력하세요. 저축·기타 추가 자산은 해당 행의 비율로, 퇴직금은 패널에서 선택한 방식으로 배분합니다. 전체 배분 비율과 금액은 이를 합산한 결과입니다. 연말 수령액은 수령 전 생활비나 그해 수익에 반영하지 않습니다. 저축 종료 후에도 추가 자산을 입력할 수 있습니다. 첫 행의 주식 내 비율은 최초 현금 투자에도 적용합니다.';
 }
 function allocationCells(i){
- const saving=i<config.retireYears?contributionFor(config,i):0,total=saving+extraAssetFor(config,i+1),safePct=safePctFor(config,i),vtiPct=(100-safePct)*stockPctFor(config,i)/100,schdPct=100-safePct-vtiPct;
- return {saving,percent:decimal(vtiPct)+' / '+decimal(schdPct)+' / '+decimal(safePct),money:amount(total*vtiPct/100)+' / '+amount(total*schdPct/100)+' / '+amount(total*safePct/100)+'<div class="ratio-bar"><i style="width:'+vtiPct+'%"></i><i style="width:'+schdPct+'%;background:#be8538"></i><i style="width:'+safePct+'%;background:#9aafa3"></i></div>'};
+ const saving=i<config.retireYears?contributionFor(config,i):0,total=saving+extraAssetFor(config,i+1),receipt=receiptAllocationFor(config,i+1),annualSafe=safePctFor(config,i),annualVti=(100-annualSafe)*stockPctFor(config,i)/100,safe=saving*annualSafe/100+receipt.safe,vti=saving*annualVti/100+receipt.vti,schd=saving*(100-annualSafe-annualVti)/100+receipt.schd,safePct=total>0?safe/total*100:annualSafe,vtiPct=total>0?vti/total*100:annualVti,schdPct=100-safePct-vtiPct;
+ return {saving,percent:decimal(vtiPct)+' / '+decimal(schdPct)+' / '+decimal(safePct),money:amount(vti)+' / '+amount(schd)+' / '+amount(safe)+'<div class="ratio-bar"><i style="width:'+vtiPct+'%"></i><i style="width:'+schdPct+'%;background:#be8538"></i><i style="width:'+safePct+'%;background:#9aafa3"></i></div>'};
 }
 let tooltipChart=null;
 function hideChartTooltip(){tooltipChart=null;$('chartTooltip').classList.add('hidden');$('chartHoverLine').classList.add('hidden');}

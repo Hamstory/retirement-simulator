@@ -6,6 +6,7 @@ test('LNG-001 1000개 동일 월별 경로에서 세 전략을 60년간 검증�
   const c = { ...structuredClone(DEFAULTS), horizon: 60, severanceAmount: 2400, severanceTiming: 'year', severanceYear: 2060 }, random = stressRandom(42);
   for (let i = 0; i < 1000; i++) {
     c.stressReturnMode=i%2?'free':'anchored';c.stressWithdrawalCap=i%3===0;
+    c.severanceAllocation=i%2?'custom':'annual';c.severanceSafePct=50;c.severanceVtiPct=25;
     const path = monthlyMarketPath(c, random);
     for (const policy of ['none', 'annual', 'conditional']) {
       const rows = simulateMonthly(stressConfig(c), path, policy);

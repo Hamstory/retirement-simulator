@@ -282,3 +282,46 @@ test('TC-040 상한 해제·정액 인출·목표 충당·기존 설정을 구�
   const months=Array.from({length:12},(_,i)=>({vtiReturn:i===0?-.9999:0,schdReturn:0}));r=simulateMonthly(c,[{vtiReturn:-.9999,schdReturn:0,months}],'none')[1];assert.ok(r.unfunded>0);assert.ok(r.workNeeded>r.capReduction);assert.equal(r.hadEmpty,true);
   for(const patch of [{stressMaxWithdrawalRate:-1},{stressMaxWithdrawalRate:101},{stressMaxWithdrawalRate:NaN},{stressWithdrawalCap:'true'}])assert.ok(validateConfig({...base(),...patch}));
 });
+test('TC-041 퇴직금 별도 배분은 저축·기타 자산 비율을 바꾸지 않는다', () => {
+  const c={...fixture(),initialVti:0,initialCash:0,retireYears:2,annualSaving:100,monthlyBudget:0,severanceAmount:1000,severanceAllocation:'custom',severanceSafePct:50,severanceVtiPct:20};
+  c.extraAssets[1]=300;c.safeAllocations[1]=40;
+  const before=JSON.stringify(c);
+  for(const rows of [simulate(c),simulateMonthly(c,[],'none')]){
+    near(rows[2].vti,456);near(rows[2].schd,364);near(rows[2].cash,680);near(rows[2].extraAsset,1300);
+    near(rows[2].vtiContribution,48);near(rows[2].schdContribution,12);near(rows[2].safeContribution,40);
+    near(rows.at(-1).total,1500);near(rows.reduce((sum,r)=>sum+r.severance,0),1000);
+  }
+  assert.equal(JSON.stringify(c),before);
+  // The payment buys units at receipt prices, with no receipt-year return.
+  const growing={...c,annualSaving:0,vtiPriceGrowth:12,schdPriceGrowth:8};
+  for(const rows of [simulate(growing),simulateMonthly(growing,[],'none')]){
+    near(rows[2].vti,344);near(rows[2].schd,336);near(rows[2].cash,620);near(rows[2].total,1300);
+    near(rows[3].vti,344*1.12);near(rows[3].schd,336*1.08);
+  }
+});
+test('TC-042 별도 퇴직금 배분은 초기·은퇴 중 수령과 안전자산 상한에 적용된다', () => {
+  for(const [safe,vti] of [[50,20],[100,0],[0,100],[0,0],[12.5,32.5]]){
+    const c={...fixture(),initialVti:0,initialCash:0,monthlyBudget:0,severanceAmount:800,severanceAllocation:'custom',severanceSafePct:safe,severanceVtiPct:vti};
+    for(const timing of [{},{retireYears:2,severanceTiming:'year',severanceYear:2026},{severanceTiming:'year',severanceYear:2028}]){
+      const config={...c,...timing},at=timing.severanceYear===2028?2:0;
+      for(const rows of [simulate(config),simulateMonthly(config,[],'none')]){
+        near(rows[at].vti,800*vti/100);near(rows[at].schd,800*(100-safe-vti)/100);near(rows[at].cash,800*safe/100);
+        near(rows.at(-1).total,800);near(rows.reduce((sum,r)=>sum+r.severance,0),800);
+      }
+    }
+  }
+  const late={...fixture(),initialVti:0,initialCash:0,severanceAmount:1000,severanceTiming:'year',severanceYear:2028,severanceAllocation:'custom',severanceSafePct:100,severanceVtiPct:0};
+  const r=simulateMonthly(late,[],'none')[2];near(r.income,0);near(r.cash,1000);assert.equal(r.firstGapMonth,1);
+  const capped=simulateMonthly({...late,stressCashCap:true},[],'none')[2];near(capped.cash,360);near(capped.cashReinvested,640);near(capped.vti,512);near(capped.schd,128);near(capped.total,1000);
+});
+test('TC-043 별도 배분 설정은 기존 기록과 호환되고 잘못된 비율을 거부한다', () => {
+  const old={...fixture(),severanceAmount:800};for(const key of ['severanceAllocation','severanceSafePct','severanceVtiPct'])delete old[key];
+  const migrated=normalizeConfig(old);assert.equal(migrated.severanceAllocation,'annual');
+  assert.deepEqual(simulate(migrated),simulate({...fixture(),severanceAmount:800}));
+  for(const patch of [{severanceAllocation:'wrong'},{severanceSafePct:-1},{severanceSafePct:101},{severanceVtiPct:NaN},{severanceVtiPct:Infinity},{severanceVtiPct:'20'},{severanceSafePct:60,severanceVtiPct:50}]){
+    assert.ok(validateConfig({...base(),severanceAllocation:'custom',...patch}));
+  }
+  // Inactive custom inputs never affect the inherited allocation or trap switching back.
+  const inherited={...fixture(),severanceAllocation:'annual',severanceSafePct:NaN,severanceVtiPct:120};
+  assert.equal(validateConfig(inherited),'');assert.deepEqual(simulate(inherited),simulate(fixture()));
+});

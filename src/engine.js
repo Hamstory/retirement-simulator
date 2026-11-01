@@ -6,6 +6,7 @@ DEFAULTS.allocations=Array(90).fill(80);
 DEFAULTS.safeAllocations=Array(90).fill(null);
 DEFAULTS.extraAssets=Array(90).fill(0);
 Object.assign(DEFAULTS,{severanceAmount:0,severanceTiming:'retirement',severanceYear:2026});
+Object.assign(DEFAULTS,{severanceAllocation:'annual',severanceSafePct:20,severanceVtiPct:64});
 Object.assign(DEFAULTS,{stressWithdrawalCap:false,stressMaxWithdrawalRate:5});
 Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,stressBufferFloor:1,stressRecoveryDrawdown:10,stressStockSale:'proportional',stressReturnMode:'anchored',stressCashCap:true});
 function normalizeConfig(incoming){
@@ -19,6 +20,14 @@ function stockPctFor(c,index){return c.allocations[index]??c.allocations[c.alloc
 function severanceYearFor(c){return c.severanceTiming==='retirement'?c.startYear+c.retireYears:c.severanceYear;}
 function severanceFor(c,elapsed){return c.startYear+elapsed===severanceYearFor(c)?c.severanceAmount:0;}
 function extraAssetFor(c,elapsed){return (elapsed>0?(c.extraAssets?.[elapsed-1]??0):0)+severanceFor(c,elapsed);}
+function severanceAllocationFor(c,index){
+ const custom=c.severanceAllocation==='custom',safe=custom?c.severanceSafePct:safePctFor(c,index),vti=custom?c.severanceVtiPct:(100-safe)*stockPctFor(c,index)/100;
+ return {safe,vti,schd:Math.max(0,100-safe-vti)};
+}
+function receiptAllocationFor(c,elapsed){
+ const index=Math.max(0,elapsed-1),other=elapsed>0?(c.extraAssets?.[index]??0):0,severance=severanceFor(c,elapsed),ratio=severanceAllocationFor(c,index),otherSafe=other*safePctFor(c,index)/100,otherVti=(other-otherSafe)*stockPctFor(c,index)/100;
+ return {safe:otherSafe+severance*ratio.safe/100,vti:otherVti+severance*ratio.vti/100,schd:Math.max(0,other-otherSafe-otherVti)+severance*ratio.schd/100};
+}
 function monthlyBudgetTotal(items){return items.reduce((sum,item)=>sum+item.amount/(item.frequency==='annual'?12:1),0);}
 function validateConfig(c){
  const finiteKeys=['startYear','birthYear','initialVti','initialSchd','initialCash','deployCash','annualSaving','savingGrowth','safeSavingPct','retireYears','horizon','inflation','annualWithdrawal','monthlyBudget','vtiPriceGrowth','schdPriceGrowth','vtiYield','schdYield','vtiDividendGrowth','schdDividendGrowth','cashYield','dividendTax','cashTax'];
@@ -39,6 +48,7 @@ function validateConfig(c){
  if(c.extraAssets!==undefined&&(!Array.isArray(c.extraAssets)||(c.extraAssets.length<30||c.extraAssets.length>90)||c.extraAssets.some(v=>!Number.isFinite(v)||v<0||v>10000000)))return '연도별 추가 자산은 0~10,000,000만원 범위로 입력하세요.';
  if(!Number.isFinite(c.severanceAmount)||c.severanceAmount<0||c.severanceAmount>10000000||!['retirement','year'].includes(c.severanceTiming))return '세후 퇴직금은 0~10,000,000만원, 수령 시점은 퇴직 연도 또는 직접 지정으로 입력하세요.';
  if(c.severanceTiming==='year'&&(!Number.isInteger(c.severanceYear)||c.severanceYear<c.startYear||c.severanceYear>c.startYear+c.retireYears+c.horizon))return '퇴직금 수령 연도는 시작 연도부터 계산 마지막 연도 사이의 정수로 입력하세요.';
+ if(!['annual','custom'].includes(c.severanceAllocation)||(c.severanceAllocation==='custom'&&(![c.severanceSafePct,c.severanceVtiPct].every(v=>Number.isFinite(v)&&v>=0&&v<=100)||c.severanceSafePct+c.severanceVtiPct>100)))return '퇴직금 배분 방식을 확인하세요. 별도 VTI·안전자산 비율은 각각 0~100%, 합계는 100% 이하로 입력하세요.';
  return validateStress(c);
 }
 function validateStress(c){
@@ -58,8 +68,8 @@ function simulate(c,marketPath=[],endElapsed=c.retireYears+c.horizon){
  const rows=[];const alloc0=c.allocations[0]/100;
  let vShares=c.initialVti+c.deployCash*alloc0,sShares=c.initialSchd+c.deployCash*(1-alloc0),cash=c.initialCash-c.deployCash;
  let vp=1,sp=1,vd=c.vtiYield/100,sd=c.schdYield/100;
- const initialSeverance=severanceFor(c,0),initialSafe=initialSeverance*safePctFor(c,0)/100;
- cash+=initialSafe;vShares+=(initialSeverance-initialSafe)*alloc0;sShares+=(initialSeverance-initialSafe)*(1-alloc0);
+ const initialSeverance=severanceFor(c,0),initialReceipt=receiptAllocationFor(c,0);
+ cash+=initialReceipt.safe;vShares+=initialReceipt.vti;sShares+=initialReceipt.schd;
  const valuation=(elapsed)=>({elapsed,year:c.startYear+elapsed,age:c.startYear+elapsed-c.birthYear,vti:vShares*vp,schd:sShares*sp,cash,total:vShares*vp+sShares*sp+cash,deflator:Math.pow(1+c.inflation/100,elapsed)});
  rows.push({...valuation(0),working:c.retireYears>0,saving:0,extraAsset:initialSeverance,severance:initialSeverance,vtiContribution:0,schdContribution:0,safeContribution:0,netDividend:0,netInterest:0,grossDividend:0,withdrawal:0,stockSold:0,cashUsed:0,requestedWithdrawal:0,unfunded:0,income:0,budget:c.monthlyBudget*12});
  for(let t=1;t<=Math.min(endElapsed,c.retireYears+c.horizon);t++){
@@ -101,8 +111,8 @@ function simulate(c,marketPath=[],endElapsed=c.retireYears+c.horizon){
    income=c.withdrawMode==='budget'?Math.min(naturalIncome,budget)+withdrawal:naturalIncome+withdrawal;
    if(c.withdrawMode==='budget')cash+=Math.max(0,naturalIncome-budget);
   }
-  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
-  cash+=extraSafe;vShares+=extraVti/vp;sShares+=(extraAsset-extraSafe-extraVti)/sp;
+  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),receipt=receiptAllocationFor(c,t);
+  cash+=receipt.safe;vShares+=receipt.vti/vp;sShares+=receipt.schd/sp;
   rows.push({...valuation(t),working,saving,extraAsset,severance,vtiContribution,schdContribution,safeContribution,netDividend,netInterest,grossDividend,withdrawal,stockSold,cashUsed,requestedWithdrawal,unfunded,income,budget,marketMonths:market.months,vtiReturn:vReturn,schdReturn:sReturn,vtiDividendFactor:vFactor,schdDividendFactor:sFactor});
   vd*=1+c.vtiDividendGrowth/100;sd*=1+c.schdDividendGrowth/100;
  }
@@ -170,8 +180,8 @@ function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
    vd*=Math.pow(1+c.vtiDividendGrowth/100,1/12);sd*=Math.pow(1+c.schdDividendGrowth/100,1/12);
   }
   // Net one-off receipts arrive at year-end, never funding an earlier month's shortfall.
-  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),extraSafe=extraAsset*safePctFor(c,t-1)/100,extraVti=(extraAsset-extraSafe)*stockPctFor(c,t-1)/100;
-  cash+=extraSafe;vShares+=extraVti/vp;sShares+=(extraAsset-extraSafe-extraVti)/sp;
+  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),receipt=receiptAllocationFor(c,t);
+  cash+=receipt.safe;vShares+=receipt.vti/vp;sShares+=receipt.schd/sp;
   const nextBudget=futureYearBudget(c,t),cashTarget=nextBudget*c.stressBufferYears,cashFloor=nextBudget*c.stressBufferFloor,healthy=indexValue()>=yearStartIndex*(1-1e-10)&&indexValue()>=peakIndex*(1-c.stressRecoveryDrawdown/100)*(1-1e-10);
   const replenishTo=policy==='annual'?cashTarget:policy==='conditional'?(healthy?cashTarget:cashFloor):0;
   if(t<c.retireYears+c.horizon&&cash<replenishTo){refillSold=sell(replenishTo-cash);cash+=refillSold;if(indexValue()<peakIndex*(1-1e-8))downMarketSold+=refillSold;}
@@ -230,4 +240,4 @@ function finishStress(acc,c,runner=simulate){
 }
 
 // @single-file-exports
-export { DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };
+export { DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };

@@ -35,6 +35,9 @@
  <div class="field"><label for="severanceAmount">세후 예상 수령액</label><div class="inputbox"><input id="severanceAmount" type="number" min="0" max="10000000" step="100"><span class="unit">만원</span></div><p class="help">수령 시점의 세후 명목금액입니다. 0이면 반영하지 않습니다.</p></div>
  <div class="field"><label for="severanceTiming">퇴직금 수령 시점</label><div class="inputbox"><select id="severanceTiming"><option value="retirement">퇴직 연도에 자동 연결</option><option value="year">수령 연도 직접 지정</option></select></div></div>
  <div class="field"><label for="severanceYear">퇴직금 수령 연도</label><div class="inputbox"><input id="severanceYear" type="number" min="2020" max="2190" step="1"><span class="unit">년</span></div></div>
+ <div class="field"><label for="severanceAllocation">퇴직금 배분 방식</label><div class="inputbox"><select id="severanceAllocation"><option value="annual">수령 연도의 신규 투자 비율 사용</option><option value="custom">퇴직금만 별도 비율 지정</option></select></div></div>
+ <div id="severanceCustomFields" class="hidden"><div class="field"><label for="severanceVtiPct">퇴직금 전체 중 VTI</label><div class="inputbox"><input id="severanceVtiPct" type="number" min="0" max="100" step="0.1"><span class="unit">%</span></div></div>
+ <div class="field"><label for="severanceSafePct">퇴직금 전체 중 안전자산</label><div class="inputbox"><input id="severanceSafePct" type="number" min="0" max="100" step="0.1"><span class="unit">%</span></div><p class="help">두 비율의 합계는 100% 이하로 입력하세요. 나머지는 SCHD입니다: <span id="severanceSchdPct"></span></p></div></div>
  <p id="severanceNote" class="soft-note"></p><p class="help">이미 현재 금융자산이나 아래 ‘기타 추가 자산’에 포함한 퇴직금은 이곳에 중복 입력하지 마세요. 퇴직소득세나 계좌별 인출 제한은 계산하지 않습니다.</p>
  </section>
  <section class="section"><div class="section-title"><span class="step">04</span><h2>은퇴 후 생활비</h2></div>
