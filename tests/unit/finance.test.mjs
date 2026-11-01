@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULTS, simulate, simulateMonthly, normalizeConfig, validateConfig, contributionFor,
-  monthlyBudgetTotal, stressRandom, randomMarketPath, monthlyMarketPath, crashMarketPath, stressPathSummary, severanceYearFor, near,
+  monthlyBudgetTotal, stressRandom, randomMarketPath, monthlyMarketPath, crashMarketPath, stressPathSummary, severanceYearFor, newFund, fundKeys, near,
 } from '../helpers/engine.mjs';
 
 const base = () => structuredClone(DEFAULTS);
@@ -415,4 +415,13 @@ test('TC-052 마지막 저축 연도 옵션은 은퇴 시점 변경과 초기 �
  const after={...moved,severanceAmount:800,severanceYear:2030};near(simulate(after)[4].cash-simulate(moved)[4].cash,160);
  const old=base();delete old.finalSavingSafeOnly;assert.equal(normalizeConfig(old).finalSavingSafeOnly,false);assert.deepEqual(simulate(normalizeConfig(old)),simulate(base()));
  for(const value of [null,undefined,'true',1])assert.ok(validateConfig({...base(),finalSavingSafeOnly:value}));
+});
+
+test('TC-059 종목별 세후 배당 합계와 연간·월별 계산의 배당 삭감을 구분한다',()=>{
+ const c=base();Object.assign(c,{initialVti:1000,initialSchd:500,initialAor:200,initialAoa:300,annualSaving:0,retireYears:1,horizon:2,monthlyBudget:0,inflation:0,cashYield:0,vtiYield:4,schdYield:6,aorYield:3,aoaYield:2,stressCashCap:false});
+ for(const k of ['vti','schd','aor','aoa']){c[k+'PriceGrowth']=0;c[k+'DividendGrowth']=k==='vti'?10:0;}
+ c.customFunds=[{...newFund('fund_distribution','가상 분배 종목'),initial:400,priceGrowth:0,yield:5,tax:10,dividendGrowth:20}];
+ const annual=simulate(c),monthly=simulateMonthly(c);for(const rows of [annual,monthly])for(const row of rows)near(fundKeys(c).reduce((sum,k)=>sum+row[k+'NetDividend'],0),row.netDividend);
+ near(annual[0].vtiNetDividend,0);near(annual[1].vtiNetDividend,34);near(annual[1].fund_distributionNetDividend,18);near(annual[1].netDividend,87.7);near(annual[2].vtiNetDividend,annual[1].vti*.044*.85);near(annual[2].fund_distributionNetDividend,annual[1].fund_distribution*.06*.9);
+ c.retireYears=0;c.horizon=1;for(const k of ['vti','schd','aor','aoa'])c[k+'DividendGrowth']=0;c.customFunds[0].dividendGrowth=0;const months=Array.from({length:12},(_,i)=>({vtiReturn:i===5?-.3:0,schdReturn:0,aorReturn:0,aoaReturn:0,fund_distributionReturn:0})),r=simulateMonthly(c,[{months}])[1];near(r.vtiNetDividend,34*(.5+.5*.925));near(r.fund_distributionNetDividend,18);near(fundKeys(c).reduce((sum,k)=>sum+r[k+'NetDividend'],0),r.netDividend);
 });

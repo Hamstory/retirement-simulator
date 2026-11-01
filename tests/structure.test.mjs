@@ -22,7 +22,7 @@ test('STR-002 DOM ID는 유일하고 모든 label과 기본 필드의 대상이 
   for (const key of Object.keys(DEFAULTS).filter(k => !Array.isArray(DEFAULTS[k]))) assert.ok(ids.includes(key), key);
 });
 test('STR-003 HTML은 외부 런타임 없이 완성된 한 파일이다', () => {
-  assert.ok(!/<!-- (STYLES|ENGINE|APP) -->/.test(html));
+  assert.ok(!/<!-- (STYLES|ENGINE|SETTINGS|APP) -->/.test(html));
   assert.ok(!/<script\b[^>]*\bsrc\s*=/.test(html));
   assert.ok(!/<link[^>]+rel=["']stylesheet/.test(body));
   assert.ok(html.includes('<script id="interface">'));

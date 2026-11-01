@@ -10,13 +10,14 @@ class Node {
  append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];this._text='';}
  addEventListener(type,fn){(this.listeners[type]??=[]).push(fn);}
  async trigger(type,overrides={}){for(const fn of this.listeners[type]||[])await fn({target:this,preventDefault(){},...overrides});}
- click(){return this.trigger('click');}focus(){}select(){}scrollIntoView(){}setAttribute(k,v){this.attrs[k]=v;}getAttribute(k){return this.attrs[k]||null;}
+ click(){return this.trigger('click');}focus(){this.focused=true;}select(){this.selected=true;}scrollIntoView(){}setAttribute(k,v){this.attrs[k]=v;}getAttribute(k){return this.attrs[k]||null;}
 }
 function boot(storage=new Map(),options={}){
  const nodes={};for(const m of html.matchAll(/<([a-z][\w-]*)\b([^>]*\bid="([^"]+)"[^>]*)>/g)){const attrs={};for(const a of m[2].matchAll(/([\w-]+)="([^"]*)"/g))attrs[a[1]]=a[2];nodes[m[3]]=new Node(m[1],attrs);}
- const state={failWrites:false,downloads:[]};
- const sandbox={console,structuredClone,crypto:{randomUUID},document:{getElementById:id=>{if(!nodes[id])throw new Error('Missing '+id);return nodes[id];},createElement:tag=>new Node(tag),querySelectorAll:()=>[],body:new Node('body')},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>{if(state.failWrites)throw new Error('quota');storage.set(k,v);}},setTimeout:options.timers||(()=>{}),Blob,URL};
- vm.createContext(sandbox);vm.runInContext(scripts+'\nglobalThis.api={getConfig:()=>structuredClone(config),getRecords:()=>structuredClone(savedRecords),setAllocation:(i,p)=>{config.allocations[i]=p;update();},getHistoryError:()=>historyReadError,getStress:()=>stressResult,isRunning:()=>stressRunning};',sandbox);
+ const state={failWrites:false,downloads:[],clipboard:[],cleanedUrls:[]};
+ const sandbox={console,structuredClone,crypto:{randomUUID},document:{getElementById:id=>{if(!nodes[id])throw new Error('Missing '+id);return nodes[id];},createElement:tag=>new Node(tag),querySelectorAll:()=>[],body:new Node('body')},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>{if(state.failWrites)throw new Error('quota');storage.set(k,v);}},setTimeout:options.timers||(()=>{}),Blob,URL,TextEncoder,TextDecoder,atob,btoa,location:options.location?new URL(options.location):undefined,navigator:options.clipboard?{clipboard:{writeText:async value=>{if(options.clipboard==='fail')throw new Error('clipboard unavailable');state.clipboard.push(value);}}}:{},...(options.compression?{CompressionStream,DecompressionStream}:{})};
+ sandbox.history={state:null,replaceState:(stateValue,title,url)=>{state.cleanedUrls.push(url);sandbox.location=new URL(url);}};
+ vm.createContext(sandbox);vm.runInContext(scripts+'\nglobalThis.api={getConfig:()=>structuredClone(config),getRecords:()=>structuredClone(savedRecords),setAllocation:(i,p)=>{config.allocations[i]=p;update();},getHistoryError:()=>historyReadError,getStress:()=>stressResult,isRunning:()=>stressRunning,ready:()=>urlStartup};',sandbox);
  sandbox.captureDownload=(name,text,type)=>state.downloads.push({name,text,type});vm.runInContext('download=captureDownload;',sandbox);
  return {nodes,storage,state,api:sandbox.api};
 }

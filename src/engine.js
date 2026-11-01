@@ -17,10 +17,6 @@ Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,str
 DEFAULTS.customFunds=[];
 DEFAULTS.unusedFunds=['aor','aoa'];
 DEFAULTS.startingInputs=[];
-const FUND_PRESETS=[
- {name:'SOL 코리아고배당',code:'0105E0',url:'https://www.soletf.co.kr/ko/fund/etf/211097'},
- {name:'TIGER 코리아배당다우존스',code:'0052D0',url:'https://www.tigeretf.com/upload/etf/20250611092527001004.pdf'}
-];
 function fundKeys(c){return [...ETF_KEYS,...(c.customFunds||[]).map(f=>f.id)];}
 function fundName(c,k){return ETF_KEYS.includes(k)?k.toUpperCase():(c.customFunds||[]).find(f=>f.id===k)?.name||k;}
 function fundSetting(c,k,kind){
@@ -139,15 +135,15 @@ function simulate(c,marketPath=[],endElapsed=c.retireYears+c.horizon){
  const initialSeverance=severanceFor(c,0),initialReceipt=receiptAllocationFor(c,0);cash+=initialReceipt.safe;
  for(const k of keys){prices[k]=1;dividends[k]=fundSetting(c,k,'Yield')/100;shares[k]=fundSetting(c,k,'Initial')+c.deployCash*ratios[k]/100+initialReceipt[k];}
  const valuation=elapsed=>{const values=etfValues(shares,prices);return {elapsed,year:c.startYear+elapsed,age:c.startYear+elapsed-c.birthYear,...values,cash,total:etfTotal(values,keys)+cash,deflator:Math.pow(1+c.inflation/100,elapsed)};};
- const zeroContributions=Object.fromEntries(keys.map(k=>[k+'Contribution',0]));
- rows.push({...valuation(0),working:c.retireYears>0,saving:0,extraAsset:initialSeverance,severance:initialSeverance,...zeroContributions,safeContribution:0,netDividend:0,netInterest:0,grossDividend:0,withdrawal:0,stockSold:0,cashUsed:0,requestedWithdrawal:0,unfunded:0,income:0,budget:c.monthlyBudget*12});
+ const zeroContributions=Object.fromEntries(keys.map(k=>[k+'Contribution',0])),zeroFundDividends=Object.fromEntries(keys.map(k=>[k+'NetDividend',0]));
+ rows.push({...valuation(0),working:c.retireYears>0,saving:0,extraAsset:initialSeverance,severance:initialSeverance,...zeroContributions,...zeroFundDividends,safeContribution:0,netDividend:0,netInterest:0,grossDividend:0,withdrawal:0,stockSold:0,cashUsed:0,requestedWithdrawal:0,unfunded:0,income:0,budget:c.monthlyBudget*12});
  for(let t=1;t<=Math.min(endElapsed,c.retireYears+c.horizon);t++){
-  const working=t<=c.retireYears,market=marketPath[t-1]||{},returns={},factors={},contributions={...zeroContributions};
+  const working=t<=c.retireYears,market=marketPath[t-1]||{},returns={},factors={},contributions={...zeroContributions},fundDividends={...zeroFundDividends};
   let grossDividend=0,netDividend=0;
   for(const k of keys){
    const r=market[k+'Return']??fundSetting(c,k,'PriceGrowth')/100,factor=market[k+'DividendFactor']??1;
    if(![r,factor].every(Number.isFinite)||r<=-1||factor<0||factor>1)throw new Error('시장 경로의 수익률 또는 배당 삭감 값을 확인하세요.');
-   returns[k+'Return']=r;factors[k+'DividendFactor']=factor;dividends[k]*=factor;grossDividend+=shares[k]*dividends[k];netDividend+=shares[k]*dividends[k]*(1-fundSetting(c,k,'Tax')/100);prices[k]*=1+r;
+   returns[k+'Return']=r;factors[k+'DividendFactor']=factor;dividends[k]*=factor;grossDividend+=shares[k]*dividends[k];fundDividends[k+'NetDividend']=shares[k]*dividends[k]*(1-fundSetting(c,k,'Tax')/100);netDividend+=fundDividends[k+'NetDividend'];prices[k]*=1+r;
   }
   const netInterest=cash*c.cashYield/100*(1-c.cashTax/100),budget=c.monthlyBudget*12*Math.pow(1+c.inflation/100,t);
   let saving=0,safeContribution=0,requestedWithdrawal=0,withdrawal=0,stockSold=0,cashUsed=0,unfunded=0,income=0;
@@ -166,7 +162,7 @@ function simulate(c,marketPath=[],endElapsed=c.retireYears+c.horizon){
   }
   const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),receipt=receiptAllocationFor(c,t);cash+=receipt.safe;
   for(const k of keys)shares[k]+=receipt[k]/prices[k];
-  rows.push({...valuation(t),working,saving,extraAsset,severance,...contributions,safeContribution,netDividend,netInterest,grossDividend,withdrawal,stockSold,cashUsed,requestedWithdrawal,unfunded,income,budget,marketMonths:market.months,...returns,...factors});
+  rows.push({...valuation(t),working,saving,extraAsset,severance,...contributions,...fundDividends,safeContribution,netDividend,netInterest,grossDividend,withdrawal,stockSold,cashUsed,requestedWithdrawal,unfunded,income,budget,marketMonths:market.months,...returns,...factors});
   for(const k of keys)dividends[k]*=1+fundSetting(c,k,'DividendGrowth')/100;
  }
  return rows;
@@ -217,12 +213,13 @@ function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
   const p=marketPath[t-1]||{},fallbackMonths=()=>Array.from({length:12},()=>Object.fromEntries(keys.map(k=>[k+'Return',Math.expm1(Math.log1p(p[k+'Return']??fundSetting(c,k,'PriceGrowth')/100)/12)]))),months=p.months||fallbackMonths();
   if(months.length!==12)throw new Error('월별 시장 경로는 매년 12개여야 합니다.');
   let netDividend=0,grossDividend=0,netInterest=0,requestedWithdrawal=0,withdrawal=0,stockSold=0,cashUsed=0,unfunded=0,income=0,budget=0,livingGap=0,maxMonthlyGapReal=0,firstGapMonth=null,firstUnfundedMonth=null,refillSold=0,downMarketSold=0,minCashMonths=Infinity;
-  const cuts=Object.fromEntries(keys.map(k=>[k,false])),ytd=Object.fromEntries(keys.map(k=>[k,1]));
+  const fundDividends=Object.fromEntries(keys.map(k=>[k+'NetDividend',0])),cuts=Object.fromEntries(keys.map(k=>[k,false])),ytd=Object.fromEntries(keys.map(k=>[k,1]));
   let hadEmpty=false,realIncome=0,realBudget=0,realNaturalIncome=0,realGap=0,capReduction=0,monthsNeedingWork=0;const yearStartIndex=indexValue();
   for(let m=1;m<=12;m++){
    const mr=months[m-1],returns={};
    for(const k of keys){const r=mr[k+'Return']??((k!=='vti'&&k!=='schd')?Math.expm1(Math.log1p(p[k+'Return']??fundSetting(c,k,'PriceGrowth')/100)/12):NaN);if(!Number.isFinite(r)||r<=-1)throw new Error('월별 주가 수익률을 확인하세요.');returns[k]=r;}
    const elapsed=t-1+m/12,deflator=Math.pow(1+c.inflation/100,elapsed),monthlyBudget=c.monthlyBudget*deflator,gross=keys.reduce((sum,k)=>sum+shares[k]*dividends[k],0)/12,dividend=keys.reduce((sum,k)=>sum+shares[k]*dividends[k]*(1-fundSetting(c,k,'Tax')/100),0)/12,interest=cash*c.cashYield/100/12*(1-c.cashTax/100);
+   for(const k of keys)fundDividends[k+'NetDividend']+=shares[k]*dividends[k]*(1-fundSetting(c,k,'Tax')/100)/12;
    for(const k of keys){prices[k]*=1+returns[k];ytd[k]*=1+returns[k];}peakIndex=Math.max(peakIndex,indexValue());
    const natural=dividend+interest,planned=c.withdrawMode==='budget'?monthlyBudget:natural+c.annualWithdrawal/12*(c.inflateWithdrawal?Math.pow(1+c.inflation/100,t-c.retireYears-1+(m-1)/12):1),allowed=spendingCap===null?planned:Math.min(planned,spendingCap/12),naturalUsed=Math.min(natural,allowed),request=Math.max(0,allowed-naturalUsed);
    const fromCash=Math.min(cash,request);cash-=fromCash;const fromStock=sell(Math.max(0,request-fromCash)),missing=Math.max(0,request-fromCash-fromStock),paid=naturalUsed+fromCash+fromStock,gap=Math.max(0,monthlyBudget-paid);
@@ -243,7 +240,7 @@ function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
   const cashReinvested=c.stressCashCap?Math.max(0,cash-cashTarget):0;
   if(cashReinvested>0){const ratios=etfRatiosFor(c,t-1);cash-=cashReinvested;for(const k of keys)shares[k]+=cashReinvested*ratios[k]/100/prices[k];}
   const deflator=Math.pow(1+c.inflation/100,t),nextMonthly=c.monthlyBudget*Math.pow(1+c.inflation/100,t+1/12),values=etfValues(shares,prices);
-  rows.push({elapsed:t,year:c.startYear+t,age:c.startYear+t-c.birthYear,working:false,saving:0,extraAsset,severance,...Object.fromEntries(keys.map(k=>[k+'Contribution',0])),safeContribution:0,...values,cash,total:etfTotal(values,keys)+cash,deflator,netDividend,grossDividend,netInterest,requestedWithdrawal,withdrawal,stockSold,cashUsed,unfunded,income,budget,realIncome,realBudget,realNaturalIncome,realGap,livingGap,maxMonthlyGapReal,firstGapMonth,firstUnfundedMonth,hadEmpty,hadLivingGap:firstGapMonth!==null,hadUnfunded:firstUnfundedMonth!==null,withdrawalBase,spendingCap,spendingRate:withdrawalBase>0?income/withdrawalBase*100:0,capReduction,monthsNeedingWork,workNeeded:livingGap,realWorkNeeded:realGap,refillSold,cashReinvested,marketMonths:months,downMarketSold,minCashMonths:Number.isFinite(minCashMonths)?minCashMonths:null,cashMonths:nextMonthly>0?cash/nextMonthly:null,cashTarget,cashFloor,marketDrawdown:1-indexValue()/peakIndex,refillEligible:healthy,...Object.fromEntries(keys.map(k=>[k+'Return',ytd[k]-1]))});
+  rows.push({elapsed:t,year:c.startYear+t,age:c.startYear+t-c.birthYear,working:false,saving:0,extraAsset,severance,...Object.fromEntries(keys.map(k=>[k+'Contribution',0])),safeContribution:0,...fundDividends,...values,cash,total:etfTotal(values,keys)+cash,deflator,netDividend,grossDividend,netInterest,requestedWithdrawal,withdrawal,stockSold,cashUsed,unfunded,income,budget,realIncome,realBudget,realNaturalIncome,realGap,livingGap,maxMonthlyGapReal,firstGapMonth,firstUnfundedMonth,hadEmpty,hadLivingGap:firstGapMonth!==null,hadUnfunded:firstUnfundedMonth!==null,withdrawalBase,spendingCap,spendingRate:withdrawalBase>0?income/withdrawalBase*100:0,capReduction,monthsNeedingWork,workNeeded:livingGap,realWorkNeeded:realGap,refillSold,cashReinvested,marketMonths:months,downMarketSold,minCashMonths:Number.isFinite(minCashMonths)?minCashMonths:null,cashMonths:nextMonthly>0?cash/nextMonthly:null,cashTarget,cashFloor,marketDrawdown:1-indexValue()/peakIndex,refillEligible:healthy,...Object.fromEntries(keys.map(k=>[k+'Return',ytd[k]-1]))});
  }
  return rows;
 }
@@ -305,4 +302,4 @@ function finishStress(acc,c,runner=simulate){
 }
 
 // @single-file-exports
-export { fundHasAllocation, fundKeys, fundName, fundSetting, newFund, FUND_PRESETS, ETF_KEYS, ETF_CAPS, finalSavingSafeFor, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };
+export { fundHasAllocation, fundKeys, fundName, fundSetting, newFund, ETF_KEYS, ETF_CAPS, finalSavingSafeFor, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };

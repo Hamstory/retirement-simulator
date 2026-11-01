@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 for (const [id, file, name] of [
+  ['REG-014', 'test-settings-link.cjs', '설정 URL 내보내기·붙여넣기·자동 복원·실패 보호'],
+  ['REG-015', 'test-fund-help.cjs', '종목 설명·일반 등록·색상 팔레트·퇴직금 사용 상태'],
+  ['REG-016', 'test-projection-dividends.cjs', '계산 내역의 사용 종목·연간 세후 배당과 CSV'],
   ['REG-001', 'test-planner.cjs', '기존 연간 계산과 인출 우선순위'],
   ['REG-002', 'test-records.cjs', '이름 있는 기록 저장·복원·실패 보호'],
   ['REG-003', 'test-stress.cjs', '기존 연간 확률 경로와 순서 위험'],

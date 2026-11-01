@@ -14,12 +14,13 @@ test('LNG-001 1000개 동일 월별 경로에서 세 전략을 60년간 검증�
       assert.equal(rows.length, 71);
       for (const r of rows) {
         assert.ok(Math.abs(r.total-fundKeys(c).reduce((sum,k)=>sum+r[k],r.cash))<1e-7*Math.max(1,r.total));
+        assert.ok(Math.abs(r.netDividend-fundKeys(c).reduce((sum,k)=>sum+r[k+'NetDividend'],0))<1e-7*Math.max(1,r.netDividend));
         if (!r.working && r.elapsed>c.retireYears) {
           assert.ok(r.cash <= r.cashTarget + 1e-7);
           if (c.stressWithdrawalCap) assert.ok(r.income <= r.spendingCap + 1e-7);
           assert.ok(r.realWorkNeeded >= 0 && r.monthsNeedingWork >= 0 && r.monthsNeedingWork <= 12);
         }
-        for (const key of ['total', ...fundKeys(c), 'cash', 'income', 'unfunded']) {
+        for (const key of ['total', ...fundKeys(c), ...fundKeys(c).map(k=>k+'NetDividend'), 'cash', 'income', 'unfunded']) {
           assert.ok(Number.isFinite(r[key]) && r[key] >= 0, `${policy} ${r.year} ${key}`);
         }
       }
