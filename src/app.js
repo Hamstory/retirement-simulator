@@ -287,7 +287,13 @@ function renderSummary(){
  const basis=config.realTerms?'현재 구매력':'해당 시점 명목금액';
  const signed=v=>(v>0?'+':'')+decimal(v)+'%';
  $('customActiveRates').replaceChildren();
- for(const k of fundKeys(config)){const target=ETF_CAPS[k]?$('active'+ETF_CAPS[k]+'Rates'):historyElement('span');if(!ETF_CAPS[k])$('customActiveRates').append(target);target.textContent=fundName(config,k)+' · 주가 '+signed(fundSetting(config,k,'PriceGrowth'))+'/년 · 시작 분배율 '+Number(fundSetting(config,k,'Yield')).toLocaleString('ko-KR',{maximumFractionDigits:2})+'% · 주당 분배금 '+signed(fundSetting(config,k,'DividendGrowth'))+'/년';}
+ for(const k of fundKeys(config)){
+  const used=!config.unusedFunds.includes(k),target=ETF_CAPS[k]?$('active'+ETF_CAPS[k]+'Rates'):used?historyElement('div','active-rate'):null;
+  if(!target)continue;target.classList.toggle('hidden',!used);if(!used){target.textContent='';continue;}
+  if(!ETF_CAPS[k])$('customActiveRates').append(target);target.style.color=colorFor(k);
+  target.textContent=fundName(config,k)+' · 주가 '+signed(fundSetting(config,k,'PriceGrowth'))+'/년 · 시작 분배율 '+Number(fundSetting(config,k,'Yield')).toLocaleString('ko-KR',{maximumFractionDigits:2})+'% · 주당 분배금 '+signed(fundSetting(config,k,'DividendGrowth'))+'/년';
+ }
+ $('customActiveRates').classList.toggle('hidden',!$('customActiveRates').children.length);
  $('timelineLabel').textContent=config.startYear+'년 시작 · '+ret.year+'년 저축 종료 · '+ret.age+'세 · '+basis;
  $('retireAssets').innerHTML=assetHtml(displayValue(ret.total,ret));
  $('retireAssetsNote').textContent=ret.year+'년 말 · '+basis;
