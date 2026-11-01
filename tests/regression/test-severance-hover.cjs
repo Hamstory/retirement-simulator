@@ -37,7 +37,7 @@ const formatted=v=>Number(v).toLocaleString('ko-KR',{maximumFractionDigits:2});
  await input('severanceSafePct',50);assert.ok(n.errorBox.textContent);await input('severanceVtiPct',25);assert.equal(n.errorBox.textContent,'');assert.equal(n.severanceSchdPct.textContent,'25.0%');
  assert.ok(n.severanceNote.textContent.includes('VTI 25.0% (300만원)'));assert.ok(n.severanceNote.textContent.includes('안전자산 50.0% (600만원)'));
  await n.allocationRows.trigger('input',{target:{matches:()=>true,dataset:{year:'0',kind:'extra'},value:'500',closest:()=>({querySelectorAll:()=>cells})}});
- assert.equal(cells[8].textContent,'36.5 / 22.4 / 0.0 / 0.0 / 41.2');assert.ok(cells[9].innerHTML.startsWith('620 / 380 / 0 / 0 / 700'));
+ for(const value of ['36.5%','22.4%','41.2%'])assert.ok(cells[8].innerHTML.includes('<strong>'+value+'</strong>'));for(const value of ['620만원','380만원','700만원'])assert.ok(cells[9].innerHTML.includes('<strong>'+value+'</strong>'));
  let receipt=n.assetChart._chartData.rows[1];assert.equal(receipt.vti,1320);assert.equal(receipt.schd,680);assert.equal(receipt.cash,1100);
  n.bulkSafeRatio.value='0';n.bulkRatio.value='100';await n.applyRatio.click();
  assert.equal(app.api.getConfig().severanceVtiPct,25);assert.equal(app.api.getConfig().severanceSafePct,50);assert.ok(n.severanceNote.textContent.includes('VTI 25.0%'));

@@ -1,4 +1,4 @@
-import { fundKeys, fundName, fundSetting, newFund, FUND_PRESETS, ETF_KEYS, ETF_CAPS, finalSavingSafeFor, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress } from './engine.js';
+import { fundHasAllocation, fundKeys, fundName, fundSetting, newFund, FUND_PRESETS, ETF_KEYS, ETF_CAPS, finalSavingSafeFor, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress } from './engine.js';
 
 'use strict';
 const $=id=>document.getElementById(id),storageKey='retirement-planner-local-v1',historyStorageKey='retirement-planner-records-v1';
@@ -8,7 +8,7 @@ const fieldKeys=Object.keys(DEFAULTS).filter(k=>!Array.isArray(DEFAULTS[k]));
 const fundColors={vti:'#176c60',schd:'#be8538',aor:'#426a9c',aoa:'#8465a5',safe:'#9aafa3'};
 const colorFor=(k,c=config)=>fundColors[k]||(c.customFunds||[]).find(f=>f.id===k)?.color||'#a15377';
 const escapeHtml=v=>String(v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const customBulk=new Map(),customSeverance=new Map();
+const customBulk=new Map(),customBulkCards=new Map(),customSeverance=new Map(),customStarting=new Map(),customStartingCards=new Map(),customFundCards=new Map(),customInitialInputs=new Map();
 let activeTab='plan';
 function showTab(key,focus=false){
  if(!['plan','stress','funds'].includes(key))return;activeTab=key;hideChartTooltip();
@@ -22,38 +22,92 @@ function fundField(label,value,attrs={}){
 }
 function renderFundControls(preserveBulk=false){
  const previous=preserveBulk?new Map([...customBulk].map(([id,input])=>[id,input.value])):new Map();
- customBulk.clear();customSeverance.clear();$('customBulkInputs').replaceChildren();$('customSeveranceFields').replaceChildren();
+ customBulk.clear();customBulkCards.clear();customSeverance.clear();$('customBulkInputs').replaceChildren();$('customSeveranceFields').replaceChildren();customStarting.clear();customStartingCards.clear();$('customStartingInputs').replaceChildren();
  for(const f of config.customFunds){
-  const bulk=fundField('ETF 내 '+f.name+' %',previous.get(f.id)??f.allocations[0],{max:'100',className:'allocation-input'});customBulk.set(f.id,bulk.input);$('customBulkInputs').append(bulk.field);
+  const bulk=fundField('ETF 내 '+f.name+' %',previous.get(f.id)??f.allocations[0],{max:'100',className:'allocation-input'});bulk.field.className='field allocation-card';bulk.field.children[1].append(historyElement('span','unit','%'));bulk.field.style.borderTopColor=colorFor(f.id);bulk.field.setAttribute('data-allocation-fund',f.id);bulk.input.addEventListener('input',refreshAllocationEditor);bulk.input.addEventListener('blur',refreshAllocationEditor);customBulk.set(f.id,bulk.input);customBulkCards.set(f.id,bulk.field);$('customBulkInputs').append(bulk.field);
+  const initial=fundField(f.name+' · ETF 내 %',0,{max:'100',className:'allocation-input'});initial.field.className='field allocation-card';initial.field.style.borderTopColor=colorFor(f.id);initial.field.children[1].append(historyElement('span','unit','%'));initial.input.addEventListener('input',applyStartingAllocation);customStarting.set(f.id,initial.input);customStartingCards.set(f.id,initial.field);$('customStartingInputs').append(initial.field);
   const sev=fundField('퇴직금 전체 중 '+f.name+' %',f.severancePct,{max:'100'});customSeverance.set(f.id,sev.input);$('customSeveranceFields').append(sev.field);
   sev.input.addEventListener('input',()=>{f.severancePct=sev.input.value===''?NaN:Number(sev.input.value);update();});
  }
 }
 function renderFundManager(){
- const list=$('customFundList');list.replaceChildren();
+ const list=$('customFundList');list.replaceChildren();customFundCards.clear();customInitialInputs.clear();
  if(!config.customFunds.length)list.append(historyElement('p','help','추가한 종목이 없습니다. 위에서 이름을 입력하거나 빠른 추가를 선택하세요.'));
  for(const f of config.customFunds){
   const card=historyElement('article','fund-card'),head=historyElement('div','fund-card-head'),title=historyElement('h3','',f.name),remove=historyElement('button','','삭제'),fields=historyElement('div','fund-fields');
   remove.type='button';remove.setAttribute('aria-label',f.name+' 삭제');remove.addEventListener('click',()=>{
-   if(f.initial>0||f.allocations.some(v=>v!==0)||f.severancePct!==0){$('fundManagerStatus').textContent='보유액·모든 연도 투자 비중·퇴직금 별도 비중을 먼저 0으로 바꿔 주세요. 자산이 사라지지 않도록 사용 중인 종목은 삭제하지 않습니다.';return;}
-   config.customFunds=config.customFunds.filter(item=>item.id!==f.id);renderFundManager();renderFundControls();update();$('fundManagerStatus').textContent='종목을 삭제했습니다.';
+   if(fundHasAllocation(config,f.id)||f.severancePct!==0){$('fundManagerStatus').textContent='보유액·모든 연도 투자 비중·퇴직금 별도 비중을 먼저 0으로 바꿔 주세요. 자산이 사라지지 않도록 사용 중인 종목은 삭제하지 않습니다.';return;}
+   config.customFunds=config.customFunds.filter(item=>item.id!==f.id);config.unusedFunds=config.unusedFunds.filter(id=>id!==f.id);config.startingInputs=config.startingInputs.filter(entry=>entry.id!==f.id);renderFundManager();renderFundControls();update();$('fundManagerStatus').textContent='종목을 삭제했습니다.';
   });head.append(title,remove);card.append(head);
-  for(const [key,label,low,high,step] of [['name','종목 이름',null,null,null],['initial','현재 보유 평가액 · 만원',0,10000000,100],['priceGrowth','배당 제외 주가 상승률 · %/년',-50,50,.5],['yield','시작 분배율 · %/년',0,30,.01],['dividendGrowth','주당 분배금 증가율 · %/년',-50,50,.5],['tax','분배금 유효 세율 · %',0,100,.1],['vol','스트레스 연간 변동성 · %',0,60,1],['crash','급락 비교 연간 하락률 · %',0,90,5],['color','차트 색상',null,null,null]]){
+  for(const [key,label,low,high,step] of [['name','종목 이름',null,null,null],['initial','현재 보유 평가액 · 만원',0,1000000000,100],['priceGrowth','배당 제외 주가 상승률 · %/년',-50,50,.5],['yield','시작 분배율 · %/년',0,30,.01],['dividendGrowth','주당 분배금 증가율 · %/년',-50,50,.5],['tax','분배금 유효 세율 · %',0,100,.1],['vol','스트레스 연간 변동성 · %',0,60,1],['crash','급락 비교 연간 하락률 · %',0,90,5],['color','차트 색상',null,null,null]]){
    const entry=fundField(label,f[key],{min:String(low),max:String(high),step:String(step)}),input=entry.input;
-   if(key==='name'){input.type='text';input.maxLength=80;}if(key==='color')input.type='color';
+   if(key==='name'){input.type='text';input.maxLength=80;}if(key==='color')input.type='color';if(key==='initial'){entry.field.classList.add('hidden');customInitialInputs.set(f.id,input);}
    input.setAttribute('data-fund-id',f.id);input.setAttribute('data-fund-key',key);input.setAttribute('aria-label',f.name+' '+label);
    input.addEventListener('input',()=>{f[key]=['name','color'].includes(key)?input.value:input.value===''?NaN:Number(input.value);if(key==='name'){title.textContent=f.name;renderFundControls(true);}update();});fields.append(entry.field);
   }
-  card.append(fields);list.append(card);
+  card.append(fields);customFundCards.set(f.id,card);list.append(card);
  }
- $('addFund').disabled=config.customFunds.length>=12;
+ $('addFund').disabled=config.customFunds.length>=12;renderFundUsage();
 }
 function addRegisteredFund(name){
  readFields();name=String(name).trim();if(!name||name.length>80){$('fundManagerStatus').textContent='종목 이름을 1~80자로 입력하세요.';return;}
  if(config.customFunds.length>=12){$('fundManagerStatus').textContent='추가 종목은 최대 12개입니다.';return;}
  if(config.customFunds.some(f=>f.name===name)){$('fundManagerStatus').textContent='같은 이름의 종목이 이미 있습니다.';return;}
  const id='fund_'+(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID().replace(/-/g,''):Date.now().toString(36)+Math.random().toString(36).slice(2));
- const fund=newFund(id,name),palette=['#a15377','#62843b','#b65d34','#477a87','#9c6a27','#735d99','#537f73','#a74f55','#697b9b','#8f744f','#686b37','#9b688b'];fund.color=palette.find(color=>!config.customFunds.some(f=>f.color===color))||palette[config.customFunds.length%palette.length];config.customFunds.push(fund);$('newFundName').value='';renderFundManager();renderFundControls();update();$('fundManagerStatus').textContent=name+' 추가됨 · 분배율은 0%로 시작합니다. 보유액과 가정을 입력하고 은퇴 계획 탭에서 투자 비율을 정하세요.';
+ const fund=newFund(id,name),palette=['#a15377','#62843b','#b65d34','#477a87','#9c6a27','#735d99','#537f73','#a74f55','#697b9b','#8f744f','#686b37','#9b688b'];fund.color=palette.find(color=>!config.customFunds.some(f=>f.color===color))||palette[config.customFunds.length%palette.length];config.customFunds.push(fund);$('newFundName').value='';renderFundManager();renderFundControls();update();$('fundManagerStatus').textContent=name+' 추가됨 · 분배율은 0%로 시작합니다. 가정을 입력하고 ‘연도별 신규 투자 비율’에서 시작 자금과 투자 비율을 정하세요.';
+}
+function renderFundUsage(){
+ const list=$('fundUsageList');list.replaceChildren();
+ for(const k of fundKeys(config)){
+  const used=!config.unusedFunds.includes(k),row=historyElement('div','fund-usage-item'+(used?'':' is-unused')),label=historyElement('span','',fundName(config,k)),button=historyElement('button',used?'fund-used':'fund-unused',used?'사용 중':'미사용');
+  button.type='button';button.setAttribute('role','switch');button.setAttribute('aria-checked',String(used));button.setAttribute('aria-label',fundName(config,k)+' 사용');button.setAttribute('data-usage-id',k);button.addEventListener('click',()=>setFundUsage(k,!used));row.append(label,button);list.append(row);
+  const card=ETF_CAPS[k]?$('fundSettings'+ETF_CAPS[k]):customFundCards.get(k);if(card)card.classList.toggle('hidden',!used);
+ }
+}
+function setFundUsage(k,used){
+ if(validateConfig(config)){$('fundManagerStatus').textContent='입력 오류를 먼저 수정해 주세요.';return;}
+ if(!used&&fundHasAllocation(config,k)){$('fundManagerStatus').textContent=fundName(config,k)+'의 시작 보유액·시작 비율·모든 연도·퇴직금 배분을 먼저 0으로 바꿔 주세요. 사용 중인 자산을 숨겨 계산에서 빠뜨리지 않도록 보호합니다.';return;}
+ config.unusedFunds=used?config.unusedFunds.filter(id=>id!==k):[...new Set([...config.unusedFunds,k])];
+ if(!used){const bulk=bulkInputFor(k);if(bulk)bulk.value='0';}
+ renderFundUsage();update();$('fundManagerStatus').textContent=fundName(config,k)+(used?' 사용 중 · 비율이 0%여도 시작 자금·투자 비율에서 편집할 수 있습니다.':' 미사용 · 투자 비율 화면에서 접어두었습니다.');
+}
+function materializeStartingCash(){
+ if(!(config.deployCash>0))return;const ratios=etfRatiosFor(config,0),deploy=config.deployCash;
+ for(const k of fundKeys(config)){const value=fundSetting(config,k,'Initial')+deploy*ratios[k]/100;if(ETF_CAPS[k])config['initial'+ETF_CAPS[k]]=value;else config.customFunds.find(f=>f.id===k).initial=value;}
+ config.initialCash-=deploy;config.deployCash=0;
+}
+function startingInputFor(k){return ETF_CAPS[k]?$('starting'+ETF_CAPS[k]+'Ratio'):customStarting.get(k);}
+function fillStartingAllocation(){
+ const keys=fundKeys(config),deployed=etfRatiosFor(config,0),values=Object.fromEntries(keys.map(k=>[k,fundSetting(config,k,'Initial')+config.deployCash*deployed[k]/100])),stocks=Object.values(values).reduce((a,b)=>a+b,0),cash=config.initialCash-config.deployCash,total=stocks+cash,saved=Object.fromEntries(config.startingInputs.map(x=>[x.id,x.value]));
+ const fallback=config.startingInputs.length?Object.fromEntries(keys.map(k=>[k,k==='schd'?0:saved[k]??0])):deployed;
+ const ratio=stocks>0?Object.fromEntries(keys.map(k=>[k,values[k]/stocks*100])):fallback,safe=total>0?cash/total*100:saved.safe??config.safeSavingPct;
+ $('startingTotal').value=Number(total.toFixed(8));$('startingSafeRatio').value=Number(safe.toFixed(8));
+ for(const k of keys)if(k!=='schd'){const input=startingInputFor(k);if(input)input.value=Number(ratio[k].toFixed(8));}
+ // Avoid a spurious >100% error when many rounded legacy holding weights sum just above 100.
+ const editable=keys.filter(k=>k!=='schd').map(k=>startingInputFor(k)).filter(Boolean),sum=editable.reduce((n,input)=>n+Number(input.value),0);
+ if(sum>100&&sum<100.000001){const largest=editable.reduce((a,b)=>Number(a.value)>=Number(b.value)?a:b);largest.value=Number((Number(largest.value)-(sum-100)).toFixed(8));}
+ renderStartingPreview();
+}
+function startingDraft(){
+ const read=input=>!input||input.value===''?NaN:Number(input.value),total=read($('startingTotal')),safe=read($('startingSafeRatio')),ratios=Object.fromEntries(fundKeys(config).filter(k=>k!=='schd').map(k=>[k,read(startingInputFor(k))])),sum=Object.values(ratios).reduce((a,b)=>a+b,0);
+ ratios.schd=Math.max(0,100-sum);const valid=Number.isFinite(total)&&total>=0&&total<=1000000000&&[safe,...Object.values(ratios)].every(v=>Number.isFinite(v)&&v>=0&&v<=100)&&sum<=100+1e-8;
+ return {total,safe,ratios,valid};
+}
+function renderStartingPreview(){
+ const draft=startingDraft();$('startingYear').textContent=config.startYear+'년 시작';$('startingSchdRatio').textContent=Number.isFinite(draft.ratios.schd)?decimal(draft.ratios.schd):'—';
+ if(draft.valid){const amounts={safe:draft.total*draft.safe/100,...Object.fromEntries(fundKeys(config).map(k=>[k,draft.total*(1-draft.safe/100)*draft.ratios[k]/100]))};$('startingAllocationPreview').innerHTML=allocationTrack({safe:draft.safe,...Object.fromEntries(fundKeys(config).map(k=>[k,(100-draft.safe)*draft.ratios[k]/100]))})+allocationBadges(amounts,'만원');}
+ else $('startingAllocationPreview').replaceChildren();
+ $('startingAllocationNote').textContent=draft.valid?'시작 자금 변경은 즉시 반영됩니다. 비율을 바꾸면 입력한 시작 총액을 다시 배분하며, 이후 연도 저축·추가 자산·퇴직금 별도 설정은 바꾸지 않습니다. 시작 시점에 받는 퇴직금은 이 총액에 중복 입력하지 마세요.':'시작 금액·안전자산 비율을 채우고 SCHD 외 ETF 합계를 100% 이하로 입력하세요.';
+ $('startingAllocationNote').classList.toggle('negative',!draft.valid);
+ for(const k of fundKeys(config)){const card=ETF_CAPS[k]?$('starting'+ETF_CAPS[k]+'Card'):customStartingCards.get(k);if(card)card.classList.toggle('hidden',config.unusedFunds.includes(k));}
+}
+function applyStartingAllocation(){
+ const draft=startingDraft();config.startingInputs=[{id:'total',value:draft.total},{id:'safe',value:draft.safe},...fundKeys(config).filter(k=>k!=='schd').map(k=>({id:k,value:draft.ratios[k]}))];
+ if(draft.valid){
+  $('initialCash').value=draft.total*draft.safe/100;$('deployCash').value=0;
+  for(const k of fundKeys(config)){const value=draft.total*(1-draft.safe/100)*draft.ratios[k]/100;if(ETF_CAPS[k])$('initial'+ETF_CAPS[k]).value=value;else {config.customFunds.find(f=>f.id===k).initial=value;const input=customInitialInputs.get(k);if(input)input.value=value;}}
+ }
+ update(true,false);renderStartingPreview();
 }
 function renderLegends(){
  const entries=fundKeys(config).map(k=>'<span><i style="background:'+colorFor(k)+'"></i>'+escapeHtml(fundName(config,k))+'</span>').join('');
@@ -66,7 +120,7 @@ const decimal=v=>Number(v).toLocaleString('ko-KR',{minimumFractionDigits:1,maxim
 function cashText(v){return Math.abs(v)>=10000?decimal(v/10000)+'억원':amount(v)+'만원';}
 function assetHtml(v){return Math.abs(v)>=10000?decimal(v/10000)+'<span> 억원</span>':amount(v)+'<span> 만원</span>';}
 function displayValue(v,row){return config.realTerms?v/row.deflator:v;}
-function fillFields(){for(const k of fieldKeys){const el=$(k);if(el.type==='checkbox')el.checked=config[k];else el.value=config[k];}$('bulkSafeRatio').value=config.safeSavingPct;const bulk=etfRatiosFor(config,0);$('bulkRatio').value=bulk.vti;$('bulkAorRatio').value=bulk.aor;$('bulkAoaRatio').value=bulk.aoa;renderBudgetItems();renderFundManager();renderFundControls();}
+function fillFields(){materializeStartingCash();for(const k of fieldKeys){const el=$(k);if(el.type==='checkbox')el.checked=config[k];else el.value=config[k];}$('bulkSafeRatio').value=config.safeSavingPct;const bulk=etfRatiosFor(config,0);$('bulkRatio').value=bulk.vti;$('bulkAorRatio').value=bulk.aor;$('bulkAoaRatio').value=bulk.aoa;renderBudgetItems();renderFundManager();renderFundControls();fillStartingAllocation();}
 function readFields(){for(const k of fieldKeys){const el=$(k);config[k]=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?el.value:el.value===''?NaN:Number(el.value);}}
 function renderBudgetItems(){
  const list=$('budgetItemsList');list.replaceChildren();
@@ -99,21 +153,50 @@ function renderSeverancePanel(){
  $('severanceSchdPct').textContent=valid?decimal(ratio.schd)+'%':'비율 확인';
  $('severanceNote').textContent=!valid?'퇴직금 배분 비율을 확인하세요.':config.severanceAmount>0?year+'년'+(year===config.startYear?' 시작 시점':' 말')+'에 '+cashText(config.severanceAmount)+' 반영 · '+[...fundKeys(config).map(k=>[fundName(config,k),ratio[k]]),['안전자산',ratio.safe]].map(([name,pct])=>name+' '+decimal(pct)+'% ('+cashText(config.severanceAmount*pct/100)+')').join(' / ')+'. '+(custom?'퇴직금만 별도 비율을 사용합니다. 저축·기타 추가 자산의 비율은 연도별 설정을 따릅니다.':year===config.startYear?'첫 신규 투자 비율을 사용합니다.':'해당 연도의 신규 투자 비율을 사용합니다.')+' 스트레스 테스트의 수령 후 안전자산 보충·상한 규칙은 그대로 적용됩니다.':'퇴직금을 입력하면 수령 시점과 투자 배분이 표시됩니다. 자동 연결은 저축 종료 연도 말 수령이며, 즉시 퇴직은 시작 시점 수령입니다.';
 }
+function bulkAllocationDraft(){
+ const read=input=>!input||input.value===''?NaN:Number(input.value),safe=read($('bulkSafeRatio'));
+ const ratios={vti:read($('bulkRatio')),aor:read($('bulkAorRatio')),aoa:read($('bulkAoaRatio')),...Object.fromEntries(config.customFunds.map(f=>[f.id,read(customBulk.get(f.id))]))};
+ const sum=Object.values(ratios).reduce((a,b)=>a+b,0);ratios.schd=Math.max(0,100-sum);
+ const valid=[safe,...Object.values(ratios)].every(v=>Number.isFinite(v)&&v>=0&&v<=100)&&sum<=100+1e-8;
+ return {safe,ratios,sum,valid};
+}
+function allocationBadges(values,unit,includeZero=false){
+ const keys=[...fundKeys(config),'safe'].filter(k=>includeZero||values[k]>0);
+ return '<div class="allocation-badges">'+keys.map(k=>'<span class="allocation-pill" data-asset="'+k+'"><i style="background:'+colorFor(k)+'"></i><span>'+escapeHtml(k==='safe'?'안전자산':fundName(config,k))+'</span><strong>'+escapeHtml(unit==='%'?decimal(values[k]):amount(values[k]))+unit+'</strong></span>').join('')+'</div>';
+}
+function allocationTrack(ratios){return '<div class="allocation-track" aria-hidden="true">'+[...fundKeys(config),'safe'].filter(k=>ratios[k]>0).map(k=>'<i style="width:'+ratios[k]+'%;background:'+colorFor(k)+'"></i>').join('')+'</div>';}
+function visibleAllocationFunds(){return fundKeys(config).filter(k=>!config.unusedFunds.includes(k));}
+function bulkInputFor(k){return k==='vti'?$('bulkRatio'):k==='aor'?$('bulkAorRatio'):k==='aoa'?$('bulkAoaRatio'):customBulk.get(k);}
+function refreshAllocationEditor(){
+ const draft=bulkAllocationDraft(),visible=new Set(visibleAllocationFunds(draft));
+ $('bulkSchdRatio').textContent=Number.isFinite(draft.sum)&&draft.sum<=100+1e-8?decimal(draft.ratios.schd):'—';$('applyRatio').disabled=!draft.valid;
+ if(draft.valid){const ratios={safe:draft.safe,...Object.fromEntries(fundKeys(config).map(k=>[k,(100-draft.safe)*draft.ratios[k]/100]))};$('bulkAllocationPreview').innerHTML=allocationTrack(ratios)+allocationBadges(ratios,'%',false);}
+ else $('bulkAllocationPreview').replaceChildren();
+ $('bulkAllocationNote').textContent=draft.valid?'‘모든 연도에 적용’을 눌러야 반영됩니다. 연도별 비율을 덮어쓰며 퇴직금 별도 배분과 마지막 저축 연도 안전자산 옵션은 유지합니다.':'각 비율은 0~100%, SCHD 외 ETF 비율 합계는 100% 이하로 입력하세요.';
+ $('bulkAllocationNote').classList.toggle('negative',!draft.valid);
+ for(const k of fundKeys(config)){
+  const card=ETF_CAPS[k]?$('bulk'+ETF_CAPS[k]+'Card'):customBulkCards.get(k);if(card)card.classList.toggle('hidden',!visible.has(k));
+ }
+ for(const el of document.querySelectorAll('#allocationWrap [data-allocation-fund]'))el.classList.toggle('hidden',!visible.has(el.getAttribute('data-allocation-fund')));
+ const hidden=config.unusedFunds.length;$('allocationHiddenNote').textContent='사용 중 '+visible.size+'개 · 미사용 '+hidden+'개 · 사용 종목은 0%도 편집할 수 있습니다.';
+}
+function allocationColumn(k,visible){return ' class="allocation-fund-col'+(visible.has(k)?'':' hidden')+'" data-allocation-fund="'+k+'"';}
 function renderAllocation(){
- const count=Math.max(1,config.retireYears+config.horizon);let html='';
+ const count=Math.max(1,config.retireYears+config.horizon),keys=fundKeys(config),visible=new Set(visibleAllocationFunds());let html='';
  for(let i=0;i<count;i++){
   const ratios=etfRatiosFor(config,i),cells=allocationCells(i),year=config.startYear+i+1,finalSafe=finalSavingSafeFor(config,i);
-  const input=(key,value,label)=>'<input class="allocation-input" type="number" min="0" max="100" step="0.1" value="'+value+'" data-year="'+i+'" data-kind="'+key+'" aria-label="'+year+'년 ETF 내 '+label+' 비율">';
-  html+='<tr><td>'+year+'년 · '+(i<config.retireYears?'저축':'은퇴')+(finalSafe?'<span class="receipt-note">안전자산 100% 옵션</span>':'')+'</td><td>'+amount(cells.saving)+'</td><td><input class="allocation-input" style="width:100px" type="number" min="0" max="10000000" step="100" value="'+(config.extraAssets[i]||'')+'" placeholder="0" data-year="'+i+'" data-kind="extra" aria-label="'+year+'년 세후 기타 추가 자산 · 만원">'+(severanceFor(config,i+1)>0?'<span class="receipt-note">퇴직금 +'+amount(severanceFor(config,i+1))+'</span>':'')+'</td><td><input class="allocation-input" type="number" min="0" max="100" step="0.1" value="'+(finalSafe?100:config.safeAllocations[i]??'')+'"'+(finalSafe?' disabled':'')+' placeholder="'+config.safeSavingPct+'" data-year="'+i+'" data-kind="safe" aria-label="'+year+'년 안전자산 비율"></td><td>'+input('vti',ratios.vti,'VTI')+'</td><td>'+decimal(ratios.schd)+'</td><td>'+input('aor',ratios.aor,'AOR')+'</td><td>'+input('aoa',ratios.aoa,'AOA')+'</td>'+config.customFunds.map(f=>'<td>'+input(f.id,ratios[f.id],escapeHtml(f.name))+'</td>').join('')+'<td>'+cells.percent+'</td><td>'+cells.money+'</td></tr>';
+  const input=(key,value,label)=>'<span class="allocation-edit"><input class="allocation-input" type="number" min="0" max="100" step="0.1" value="'+value+'" data-year="'+i+'" data-kind="'+key+'" aria-label="'+year+'년 ETF 내 '+escapeHtml(label)+' 비율"><span>%</span></span>';
+  html+='<tr><td><strong>'+year+'년</strong><span class="allocation-phase">'+(i<config.retireYears?'저축':'은퇴')+'</span>'+(finalSafe?'<span class="receipt-note">안전자산 100% 옵션</span>':'')+'</td><td>'+amount(cells.saving)+'</td><td><input class="allocation-input allocation-extra" type="number" min="0" max="10000000" step="100" value="'+(config.extraAssets[i]||'')+'" placeholder="0" data-year="'+i+'" data-kind="extra" aria-label="'+year+'년 세후 기타 추가 자산 · 만원">'+(severanceFor(config,i+1)>0?'<span class="receipt-note">퇴직금 +'+amount(severanceFor(config,i+1))+'</span>':'')+'</td><td><span class="allocation-edit"><input class="allocation-input" type="number" min="0" max="100" step="0.1" value="'+(finalSafe?100:config.safeAllocations[i]??'')+'"'+(finalSafe?' disabled':'')+' placeholder="'+config.safeSavingPct+'" data-year="'+i+'" data-kind="safe" aria-label="'+year+'년 안전자산 비율"><span>%</span></span></td>'+keys.map(k=>'<td'+allocationColumn(k,visible)+'>'+(k==='schd'?decimal(ratios[k]):input(k,ratios[k],fundName(config,k)))+'</td>').join('')+'<td class="allocation-result">'+cells.percent+'</td><td class="allocation-result">'+cells.money+'</td></tr>';
  }
  $('allocationRows').innerHTML=html;
- $('allocationHeaders').innerHTML=['투자 연도','연간 저축 · 만원','기타 추가 자산 · 세후 만원','안전자산 %',...fundKeys(config).map(k=>'ETF 내 '+fundName(config,k)+' %'),'전체 배분 비율 · '+[...fundKeys(config).map(k=>fundName(config,k)),'안전자산'].join(' / '),'신규 투자금 · 만원 · 같은 순서'].map(v=>'<th>'+escapeHtml(v)+'</th>').join('');
- $('allocationNote').textContent='안전자산 공란은 기본 비중('+decimal(config.safeSavingPct)+'%)을 사용합니다. 안전자산을 제외한 ETF 자금에서 SCHD 외 각 종목 비율을 정하고 나머지는 SCHD입니다. 이 표에는 퇴직금 외의 기타 추가 자산만 세후 명목금액으로 입력하세요. 저축·기타 자산은 해당 행, 퇴직금은 패널의 비율로 배분하며 전체 비율·금액은 합산 결과입니다. 수령 전 생활비·수익에 소급 반영하지 않습니다. 첫 행의 ETF 비율은 최초 현금 투자에도 적용합니다. AOR·AOA 내부 채권은 별도 안전자산 잔액에 포함하지 않습니다.';
+ $('allocationHeaders').innerHTML=['투자 연도','연간 저축 · 만원','기타 추가 자산 · 세후 만원','안전자산 %'].map(v=>'<th>'+escapeHtml(v)+'</th>').join('')+keys.map(k=>'<th'+allocationColumn(k,visible)+'><i class="allocation-dot" style="background:'+colorFor(k)+'"></i>'+escapeHtml(fundName(config,k))+'<span class="allocation-th-note">'+(k==='schd'?'ETF 내 % · 자동':'ETF 내 %')+'</span></th>').join('')+'<th>전체 신규 자금 배분</th><th>신규 투자금 · 만원</th>';
+ $('allocationNote').textContent='안전자산 공란은 기본 비중('+decimal(config.safeSavingPct)+'%)을 사용합니다. 안전자산을 제외한 ETF 자금에서 SCHD 외 각 종목 비율을 정하고 나머지는 SCHD입니다. 종목 관리에서 사용 중인 종목만 표시하며, 미사용으로 바꿔도 원본 설정을 지우지 않습니다. 비율은 기존 보유분을 바꾸지 않습니다. 기타 추가 자산은 연말 세후 수령액이며, 퇴직금과 중복 입력하지 마세요.';
+ refreshAllocationEditor();
 }
 function allocationCells(i){
  const saving=i<config.retireYears?contributionFor(config,i):0,total=saving+extraAssetFor(config,i+1),receipt=receiptAllocationFor(config,i+1),annual=allocationFor(config,i),keys=[...fundKeys(config),'safe'];
  const money=Object.fromEntries(keys.map(k=>[k,saving*annual[k]/100+receipt[k]])),ratios=Object.fromEntries(keys.map(k=>[k,total>0?money[k]/total*100:annual[k]]));
- return {saving,percent:keys.map(k=>decimal(ratios[k])).join(' / '),money:keys.map(k=>amount(money[k])).join(' / ')+'<div class="ratio-bar">'+keys.map(k=>'<i style="width:'+ratios[k]+'%;background:'+colorFor(k)+'"></i>').join('')+'</div>'};
+ return {saving,percent:allocationTrack(ratios)+allocationBadges(ratios,'%'),money:'<strong class="allocation-total">'+amount(total)+'만원</strong>'+(total>0?allocationBadges(money,'만원'):'<span class="allocation-empty">신규 투자 없음</span>')};
 }
 let tooltipChart=null;
 function hideChartTooltip(){tooltipChart=null;$('chartTooltip').classList.add('hidden');$('chartHoverLine').classList.add('hidden');}
@@ -217,7 +300,7 @@ function renderProjection(){
  $('projectionHeaders').innerHTML=['연도 / 나이','단계','저축액','추가 자산 합계 · 퇴직금 포함','세후 배당','세후 이자','추가 인출','미충당 인출',...fundKeys(config).map(k=>'기말 '+fundName(config,k)),'기말 안전자산','기말 합계','월 현금흐름','현재 가치 기준'].map(v=>'<th>'+escapeHtml(v)+'</th>').join('');
  $('projectionRows').innerHTML=projection.map(r=>'<tr class="'+(r.elapsed===config.retireYears?'retired-row':'')+'"><td>'+r.year+'년 / '+r.age+'세</td><td>'+(r.elapsed===0?'시작':r.working?'저축':'은퇴')+'</td>'+[r.saving,r.extraAsset||0,r.netDividend,r.netInterest,r.withdrawal,r.unfunded,...fundKeys(config).map(k=>r[k]),r.cash,r.total].map((v,i)=>'<td'+(i===5&&v>.001?' class="negative"':'')+'>'+amount(displayValue(v,r))+(i===1&&r.severance>0?'<span class="receipt-note">퇴직금 '+amount(displayValue(r.severance,r))+' 포함</span>':'')+'</td>').join('')+'<td>'+(r.working||r.elapsed===0?'—':decimal(displayValue(r.income/12,r)))+'</td><td>'+(r.working||r.elapsed===0?'—':decimal(r.income/12/r.deflator))+'</td></tr>').join('');
 }
-function stressInputKey(c){const copy={...c};delete copy.realTerms;delete copy.budgetItems;return JSON.stringify(copy);}
+function stressInputKey(c){const copy={...c};delete copy.realTerms;delete copy.budgetItems;delete copy.unusedFunds;delete copy.startingInputs;return JSON.stringify(copy);}
 function stressBusy(busy){stressRunning=busy;$('runStress').disabled=busy;$('rerollStress').disabled=busy;$('stressProgress').classList.toggle('hidden',!busy);}
 function refreshStressState(){
  const valid=!validateConfig(config),key=valid?stressInputKey(config):'';
@@ -275,14 +358,16 @@ function renderStress(){
  $('stressTraceHeaders').innerHTML=['연도 / 은퇴 연차',...fundKeys(c).map(k=>fundName(c,k)+' 주가 수익률'),'월 배당·이자','생활비용 연 주식 매도','연 안전자산 인출','연 보충 매도','연 초과분 재투자','기말 안전자산','잔여 생활비 · 개월','기말 자산','월 현금흐름','월 현금흐름 · 현재 가치','가장 부족했던 월 · 현재 가치','실제 인출률 · 연초 금융자산 기준','상한에 따른 연 생활비 감액','추가 근로 필요액 · 현재 가치 월평균'].map(v=>'<th>'+escapeHtml(v)+'</th>').join('');
  $('stressTraceRows').innerHTML=retired.map(r=>'<tr'+(r.monthsNeedingWork>0?' class="work-required"':'')+'><td>'+r.year+'년 / '+(r.elapsed-c.retireYears)+'년차'+(r.monthsNeedingWork>0?'<span class="work-badge">추가 근로 필요 · '+r.monthsNeedingWork+'개월</span>':'')+'</td>'+fundKeys(c).map(k=>'<td'+(r[k+'Return']<0?' class="negative"':'')+'>'+decimal(r[k+'Return']*100)+'%</td>').join('')+'<td>'+decimal(config.realTerms?r.realNaturalIncome/12:(r.netDividend+r.netInterest)/12)+'</td><td>'+amount(value(r.stockSold,r))+'</td><td>'+amount(value(r.cashUsed,r))+'</td><td>'+amount(value(r.refillSold,r))+'</td><td>'+amount(value(r.cashReinvested,r))+'</td><td>'+amount(value(r.cash,r))+'</td><td>'+(r.cashMonths===null?'—':decimal(r.cashMonths))+'</td><td>'+amount(value(r.total,r))+'</td><td>'+decimal(config.realTerms?r.realIncome/12:r.income/12)+'</td><td>'+decimal(r.realIncome/12)+'</td><td'+(r.hadLivingGap?' class="negative"':'')+'>'+decimal(r.maxMonthlyGapReal)+'</td><td>'+decimal(r.spendingRate)+'%</td><td>'+amount(value(r.capReduction,r))+'</td><td>'+decimal(r.realWorkNeeded/12)+'</td></tr>').join('');
 }
-function update(rebuildSchedule=true){
+function update(rebuildSchedule=true,refreshStarting=true){
  readFields();renderSeverancePanel();refreshBudgetSummary();$('savingGrowthUnit').textContent=config.savingGrowthMode==='fixed'?'만원':'%';$('retireYearsLabel').textContent=config.retireYears+'년';
  $('stressMaxWithdrawalRate').disabled=!config.stressWithdrawalCap;
  $('annualWithdrawal').disabled=config.withdrawMode==='budget';$('inflateWithdrawal').disabled=config.withdrawMode==='budget';
  $('retireNote').textContent=config.retireYears===0?'현재 자산으로 즉시 은퇴하는 경우를 계산합니다.':(config.startYear+1)+'~'+(config.startYear+config.retireYears)+'년 저축, '+(config.startYear+config.retireYears+1)+'년부터 인출합니다.';
  $('finalSavingSafeNote').textContent=(config.finalSavingSafeOnly?'옵션 적용 · ':'옵션을 켜면 · ')+(config.retireYears>0?(config.startYear+config.retireYears)+'년의 저축·기타 추가 자산과 연도별 비율을 따르는 퇴직금에 안전자산 100%를 적용합니다.':'즉시 은퇴에는 저축 연도가 없어 적용하지 않습니다.')+' 기존 보유 ETF와 시작 시점 투자·수령, 퇴직금 별도 배분은 유지합니다. 옵션을 끄면 기존 연도별 비율로 돌아갑니다.';
  const error=validateConfig(config);setError(error);refreshStressState();if(error)return;
- projection=simulate(config);renderLegends();if(rebuildSchedule)renderAllocation();renderSummary();renderCharts();renderProjection();persist();
+ const inactive=config.unusedFunds.filter(k=>!fundHasAllocation(config,k));if(inactive.length!==config.unusedFunds.length){config.unusedFunds=inactive;renderFundUsage();}
+ if(refreshStarting)fillStartingAllocation();
+ projection=simulate(config);renderLegends();if(rebuildSchedule)renderAllocation();else refreshAllocationEditor();renderSummary();renderCharts();renderProjection();persist();
 }
 function download(name,text,type){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 let savedRecords=[],historyReadError='';
@@ -362,8 +447,13 @@ $('toggleSettings').addEventListener('click',()=>{const open=document.body.class
 $('allocationRows').addEventListener('input',e=>{
  if(!e.target.matches('[data-year]'))return;const i=Number(e.target.dataset.year),kind=e.target.dataset.kind,key={extra:'extraAssets',safe:'safeAllocations',vti:'allocations',aor:'aorAllocations',aoa:'aoaAllocations'}[kind];const custom=config.customFunds.find(f=>f.id===kind);if(!key&&!custom)return;
  const target=custom?custom.allocations:config[key];target[i]=e.target.value===''?(kind==='extra'?0:kind==='safe'?null:NaN):Number(e.target.value);update(false);
- if(!validateConfig(config)){const cells=e.target.closest('tr').querySelectorAll('td'),data=allocationCells(i);cells[5].textContent=decimal(etfRatiosFor(config,i).schd);cells[8+config.customFunds.length].textContent=data.percent;cells[9+config.customFunds.length].innerHTML=data.money;}
+ if(!validateConfig(config)){const cells=e.target.closest('tr').querySelectorAll('td'),data=allocationCells(i);cells[5].textContent=decimal(etfRatiosFor(config,i).schd);cells[8+config.customFunds.length].innerHTML=data.percent;cells[9+config.customFunds.length].innerHTML=data.money;}
 });
+$('openStartingAllocation').addEventListener('click',()=>{showTab('plan');$('investmentAllocationPanel').scrollIntoView({behavior:'smooth',block:'start'});$('startingTotal').focus({preventScroll:true});});
+$('manageAllocationFunds').addEventListener('click',()=>{showTab('funds');$('fundUsageList').scrollIntoView({behavior:'smooth',block:'start'});});
+for(const id of ['startingTotal','startingSafeRatio','startingVtiRatio','startingAorRatio','startingAoaRatio'])$(id).addEventListener('input',applyStartingAllocation);
+for(const id of ['bulkRatio','bulkAorRatio','bulkAoaRatio','bulkSafeRatio']){for(const event of ['input','blur'])$(id).addEventListener(event,refreshAllocationEditor);}
+$('allocationRows').addEventListener('focusout',()=>refreshAllocationEditor());
 $('applyRatio').addEventListener('click',()=>{
  const read=id=>$(id).value===''?NaN:Number($(id).value),safe=read('bulkSafeRatio'),vti=read('bulkRatio'),aor=read('bulkAorRatio'),aoa=read('bulkAoaRatio');
  const customValues=config.customFunds.map(f=>customBulk.get(f.id)?.value===''?NaN:Number(customBulk.get(f.id)?.value));

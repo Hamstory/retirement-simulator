@@ -15,6 +15,8 @@ Object.assign(DEFAULTS,{finalSavingSafeOnly:false});
 Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,stressBufferFloor:1,stressRecoveryDrawdown:10,stressStockSale:'proportional',stressReturnMode:'anchored',stressCashCap:true});
 // Registered funds use the same engine as the original four ETFs; no product-specific branches.
 DEFAULTS.customFunds=[];
+DEFAULTS.unusedFunds=['aor','aoa'];
+DEFAULTS.startingInputs=[];
 const FUND_PRESETS=[
  {name:'SOL 코리아고배당',code:'0105E0',url:'https://www.soletf.co.kr/ko/fund/etf/211097'},
  {name:'TIGER 코리아배당다우존스',code:'0052D0',url:'https://www.tigeretf.com/upload/etf/20250611092527001004.pdf'}
@@ -32,10 +34,18 @@ function fundSetting(c,k,kind){
 }
 function newFund(id,name='새 종목') {return {id,name,initial:0,priceGrowth:3,yield:0,dividendGrowth:0,vol:18,crash:35,tax:15.4,color:'#a15377',allocations:Array(90).fill(0),severancePct:0};}
 function marketShock(returns,c){const factor=r=>r<=-.20?Math.max(0,1+r*c.stressDividendCut/100):1;return Object.fromEntries(fundKeys(c).flatMap(k=>[[k+'Return',returns[k]],[k+'DividendFactor',factor(returns[k])]]));}
+function fundHasAllocation(c,k){
+ if(fundSetting(c,k,'Initial')>0||c.deployCash>0&&etfRatiosFor(c,0)[k]>0)return true;
+ if(Array.from({length:90},(_,i)=>etfRatiosFor(c,i)[k]).some(v=>v>0))return true;
+ if(c.severanceAllocation==='custom'&&severanceAllocationFor(c,0)[k]>0)return true;
+ if(c.startingInputs?.length){const map=Object.fromEntries(c.startingInputs.map(x=>[x.id,x.value]));if(k==='schd'?100-Object.entries(map).filter(([id])=>id!=='safe'&&id!=='total').reduce((sum,[,v])=>sum+v,0)>0:(map[k]??0)>0)return true;}
+ return false;
+}
 function normalizeConfig(incoming){
  const c={...structuredClone(DEFAULTS),...structuredClone(incoming)};
  for(const [key,fallback] of [['allocations',80],['safeAllocations',null],['extraAssets',0],['aorAllocations',0],['aoaAllocations',0]])if(Array.isArray(c[key])&&c[key].length>=30&&c[key].length<=90){const old=c[key];c[key]=Array.from({length:90},(_,i)=>i<old.length?old[i]:(key==='allocations'||key==='aorAllocations'||key==='aoaAllocations')?(old[old.length-1]??fallback):fallback);}
  if(Array.isArray(c.customFunds))for(const f of c.customFunds)if(f&&Array.isArray(f.allocations)&&f.allocations.length>=30&&f.allocations.length<=90)f.allocations=Array.from({length:90},(_,i)=>f.allocations[i]??f.allocations.at(-1));
+ if(!validateConfig(c)){const keys=fundKeys(c);c.unusedFunds=incoming.unusedFunds===undefined?keys.filter(k=>!fundHasAllocation(c,k)):c.unusedFunds.filter(k=>!fundHasAllocation(c,k));}
  return c;
 }
 function contributionFor(c,index){return Math.max(0,c.savingGrowthMode==='fixed'?c.annualSaving+c.savingGrowth*index:c.annualSaving*Math.pow(1+c.savingGrowth/100,index));}
@@ -77,9 +87,14 @@ function validateConfig(c){
   if(!f||typeof f.id!=='string'||!/^fund_[a-z0-9_]{1,48}$/.test(f.id)||ids.has(f.id))return '추가 종목 ID가 잘못되었거나 중복입니다.';
   ids.add(f.id);
   if(typeof f.name!=='string'||!f.name.trim()||f.name.length>80||typeof f.color!=='string'||!/^#[0-9a-f]{6}$/i.test(f.color))return '종목 이름(1~80자)과 색상을 확인하세요.';
-  for(const [key,low,high] of [['initial',0,10000000],['priceGrowth',-50,50],['yield',0,30],['dividendGrowth',-50,50],['vol',0,60],['crash',0,90],['tax',0,100],['severancePct',0,100]])if(!Number.isFinite(f[key])||f[key]<low||f[key]>high)return '추가 종목의 보유액·수익률·세율·비중 범위를 확인하세요.';
+  for(const [key,low,high] of [['initial',0,1000000000],['priceGrowth',-50,50],['yield',0,30],['dividendGrowth',-50,50],['vol',0,60],['crash',0,90],['tax',0,100],['severancePct',0,100]])if(!Number.isFinite(f[key])||f[key]<low||f[key]>high)return '추가 종목의 보유액·수익률·세율·비중 범위를 확인하세요.';
   if(!Array.isArray(f.allocations)||f.allocations.length<30||f.allocations.length>90||f.allocations.some(v=>!Number.isFinite(v)||v<0||v>100))return '추가 종목의 연도별 비율은 0~100%로 입력하세요.';
  }
+ const known=fundKeys(c);
+ if(!Array.isArray(c.unusedFunds)||c.unusedFunds.length>16||new Set(c.unusedFunds).size!==c.unusedFunds.length||c.unusedFunds.some(k=>!known.includes(k)))return '종목 사용 상태를 확인하세요.';
+ const start=c.startingInputs,allowed=['total','safe',...known.filter(k=>k!=='schd')];
+ if(!Array.isArray(start)||start.length>18||start.some(x=>!x||!allowed.includes(x.id)||!Number.isFinite(x.value)||x.value<0||x.value>(x.id==='total'?1000000000:100))||new Set(start.map(x=>x.id)).size!==start.length)return '시작 자금 금액·배분 비율을 확인하세요.';
+ if(start.length&&(!start.some(x=>x.id==='total')||!start.some(x=>x.id==='safe')||start.filter(x=>x.id!=='total'&&x.id!=='safe').reduce((sum,x)=>sum+x.value,0)>100+1e-8))return '시작 자금은 금액·안전자산 비율을 채우고 SCHD 외 ETF 비율 합계를 100% 이하로 입력하세요.';
  const finiteKeys=['startYear','birthYear','initialVti','initialSchd','initialCash','deployCash','annualSaving','savingGrowth','safeSavingPct','retireYears','horizon','inflation','annualWithdrawal','monthlyBudget','vtiPriceGrowth','schdPriceGrowth','vtiYield','schdYield','vtiDividendGrowth','schdDividendGrowth','cashYield','dividendTax','cashTax'];
  finiteKeys.push('initialAor','initialAoa','aorPriceGrowth','aoaPriceGrowth','aorYield','aoaYield','aorDividendGrowth','aoaDividendGrowth');
  for(const k of finiteKeys)if(!Number.isFinite(c[k]))return '모든 숫자 입력란을 채워 주세요.';
@@ -290,4 +305,4 @@ function finishStress(acc,c,runner=simulate){
 }
 
 // @single-file-exports
-export { fundKeys, fundName, fundSetting, newFund, FUND_PRESETS, ETF_KEYS, ETF_CAPS, finalSavingSafeFor, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };
+export { fundHasAllocation, fundKeys, fundName, fundSetting, newFund, FUND_PRESETS, ETF_KEYS, ETF_CAPS, finalSavingSafeFor, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };
