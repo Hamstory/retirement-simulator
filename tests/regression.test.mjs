@@ -11,6 +11,7 @@ for (const [id, file, name] of [
   ['REG-005', 'test-budget-allocation.cjs', '연도별 안전자산·생활비 항목·수익률 표시'],
   ['REG-006', 'test-buffer.cjs', '월별 자금 조달·세 보충 전략·추가 자산'],
   ['REG-007', 'test-severance-hover.cjs', '퇴직금 패널과 차트 포인터·키보드·저장·내보내기'],
+  ['REG-011', 'test-fund-manager.cjs', '종목 관리·동적 배분·탭·저장·CSV·스트레스 통합'],
   ['REG-010', 'test-final-saving.cjs', '마지막 저축 연도 옵션의 표시·원본 비율 보존·저장 복원'],
   ['REG-009', 'test-multi-etf.cjs', 'AOR·AOA 입력·배분·차트·저장·CSV와 스트레스 통합'],
   ['REG-008', 'test-withdrawal-cap.cjs', '인출률 상한 설정·근로 필요 연도 음영·CSV·기록'],

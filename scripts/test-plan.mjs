@@ -30,7 +30,7 @@ export async function verifyPlan() {
       if (!source.includes(c.id)) throw new Error(`TC 코드 연결 누락: ${c.id}`);
     }
   }
-  for (const file of ['tests/unit/finance.test.mjs', 'tests/structure.test.mjs', 'tests/regression.test.mjs', 'tests/long-run.test.mjs']) {
+  for (const file of ['tests/unit/finance.test.mjs', 'tests/unit/funds.test.mjs', 'tests/structure.test.mjs', 'tests/regression.test.mjs', 'tests/long-run.test.mjs']) {
     const source = await readFile(path.join(root, file), 'utf8');
     for (const [id] of source.matchAll(/\b(?:TC|REG|STR|LNG)-\d{3}\b/g)) {
       if (!ids.has(id)) throw new Error(`정의되지 않은 TC ID: ${file} ${id}`);

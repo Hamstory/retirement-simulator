@@ -13,9 +13,29 @@ Object.assign(DEFAULTS,{initialAor:0,initialAoa:0,aorPriceGrowth:3,aoaPriceGrowt
 Object.assign(DEFAULTS,{stressWithdrawalCap:false,stressMaxWithdrawalRate:5});
 Object.assign(DEFAULTS,{finalSavingSafeOnly:false});
 Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,stressBufferFloor:1,stressRecoveryDrawdown:10,stressStockSale:'proportional',stressReturnMode:'anchored',stressCashCap:true});
+// Registered funds use the same engine as the original four ETFs; no product-specific branches.
+DEFAULTS.customFunds=[];
+const FUND_PRESETS=[
+ {name:'SOL 코리아고배당',code:'0105E0',url:'https://www.soletf.co.kr/ko/fund/etf/211097'},
+ {name:'TIGER 코리아배당다우존스',code:'0052D0',url:'https://www.tigeretf.com/upload/etf/20250611092527001004.pdf'}
+];
+function fundKeys(c){return [...ETF_KEYS,...(c.customFunds||[]).map(f=>f.id)];}
+function fundName(c,k){return ETF_KEYS.includes(k)?k.toUpperCase():(c.customFunds||[]).find(f=>f.id===k)?.name||k;}
+function fundSetting(c,k,kind){
+ const f=(c.customFunds||[]).find(f=>f.id===k);
+ if(f)return f[{Initial:'initial',PriceGrowth:'priceGrowth',Yield:'yield',DividendGrowth:'dividendGrowth',Vol:'vol',Crash:'crash',Tax:'tax'}[kind]];
+ if(kind==='Initial')return c['initial'+ETF_CAPS[k]];
+ if(kind==='Tax')return c.dividendTax;
+ if(kind==='Vol')return c['stress'+ETF_CAPS[k]+'Vol'];
+ if(kind==='Crash')return k==='vti'||k==='schd'?c.stressCrash:c['stress'+ETF_CAPS[k]+'Crash'];
+ return c[k+kind];
+}
+function newFund(id,name='새 종목') {return {id,name,initial:0,priceGrowth:3,yield:0,dividendGrowth:0,vol:18,crash:35,tax:15.4,color:'#a15377',allocations:Array(90).fill(0),severancePct:0};}
+function marketShock(returns,c){const factor=r=>r<=-.20?Math.max(0,1+r*c.stressDividendCut/100):1;return Object.fromEntries(fundKeys(c).flatMap(k=>[[k+'Return',returns[k]],[k+'DividendFactor',factor(returns[k])]]));}
 function normalizeConfig(incoming){
  const c={...structuredClone(DEFAULTS),...structuredClone(incoming)};
  for(const [key,fallback] of [['allocations',80],['safeAllocations',null],['extraAssets',0],['aorAllocations',0],['aoaAllocations',0]])if(Array.isArray(c[key])&&c[key].length>=30&&c[key].length<=90){const old=c[key];c[key]=Array.from({length:90},(_,i)=>i<old.length?old[i]:(key==='allocations'||key==='aorAllocations'||key==='aoaAllocations')?(old[old.length-1]??fallback):fallback);}
+ if(Array.isArray(c.customFunds))for(const f of c.customFunds)if(f&&Array.isArray(f.allocations)&&f.allocations.length>=30&&f.allocations.length<=90)f.allocations=Array.from({length:90},(_,i)=>f.allocations[i]??f.allocations.at(-1));
  return c;
 }
 function contributionFor(c,index){return Math.max(0,c.savingGrowthMode==='fixed'?c.annualSaving+c.savingGrowth*index:c.annualSaving*Math.pow(1+c.savingGrowth/100,index));}
@@ -23,30 +43,43 @@ function safePctFor(c,index){return c.safeAllocations?.[index]??c.safeSavingPct;
 function stockPctFor(c,index){return c.allocations[index]??c.allocations[c.allocations.length-1];}
 function etfRatiosFor(c,index){
  const vti=stockPctFor(c,index),aor=c.aorAllocations?.[index]??c.aorAllocations?.at(-1)??0,aoa=c.aoaAllocations?.[index]??c.aoaAllocations?.at(-1)??0;
- return {vti,schd:Math.max(0,100-vti-aor-aoa),aor,aoa};
+ const custom=Object.fromEntries((c.customFunds||[]).map(f=>[f.id,f.allocations[index]??f.allocations.at(-1)]));
+ return {vti,schd:Math.max(0,100-vti-aor-aoa-Object.values(custom).reduce((a,b)=>a+b,0)),aor,aoa,...custom};
 }
 function finalSavingSafeFor(c,index){return c.finalSavingSafeOnly===true&&c.retireYears>0&&index===c.retireYears-1;}
-function allocationFor(c,index,applyFinalYear=true){const safe=applyFinalYear&&finalSavingSafeFor(c,index)?100:safePctFor(c,index),ratios=etfRatiosFor(c,index);return {safe,...Object.fromEntries(ETF_KEYS.map(k=>[k,(100-safe)*ratios[k]/100]))};}
+function allocationFor(c,index,applyFinalYear=true){const safe=applyFinalYear&&finalSavingSafeFor(c,index)?100:safePctFor(c,index),ratios=etfRatiosFor(c,index);return {safe,...Object.fromEntries(fundKeys(c).map(k=>[k,(100-safe)*ratios[k]/100]))};}
 function severanceYearFor(c){return c.severanceTiming==='retirement'?c.startYear+c.retireYears:c.severanceYear;}
 function severanceFor(c,elapsed){return c.startYear+elapsed===severanceYearFor(c)?c.severanceAmount:0;}
 function extraAssetFor(c,elapsed){return (elapsed>0?(c.extraAssets?.[elapsed-1]??0):0)+severanceFor(c,elapsed);}
 function severanceAllocationFor(c,index,applyFinalYear=true){
  if(c.severanceAllocation!=='custom')return allocationFor(c,index,applyFinalYear);
  const safe=c.severanceSafePct,vti=c.severanceVtiPct,aor=c.severanceAorPct,aoa=c.severanceAoaPct;
- return {safe,vti,aor,aoa,schd:Math.max(0,100-safe-vti-aor-aoa)};
+ const custom=Object.fromEntries((c.customFunds||[]).map(f=>[f.id,f.severancePct]));
+ return {safe,vti,aor,aoa,...custom,schd:Math.max(0,100-safe-vti-aor-aoa-Object.values(custom).reduce((a,b)=>a+b,0))};
 }
 function receiptAllocationFor(c,elapsed){
  const index=Math.max(0,elapsed-1),other=elapsed>0?(c.extraAssets?.[index]??0):0,severance=severanceFor(c,elapsed),ratio=severanceAllocationFor(c,index,elapsed>0),annual=allocationFor(c,index);
- return Object.fromEntries(['safe',...ETF_KEYS].map(k=>[k,other*annual[k]/100+severance*ratio[k]/100]));
+ return Object.fromEntries(['safe',...fundKeys(c)].map(k=>[k,other*annual[k]/100+severance*ratio[k]/100]));
 }
-function etfTotal(values){return ETF_KEYS.reduce((sum,k)=>sum+values[k],0);}
-function etfValues(shares,prices){return Object.fromEntries(ETF_KEYS.map(k=>[k,shares[k]*prices[k]]));}
+function etfTotal(values,keys=ETF_KEYS){return keys.reduce((sum,k)=>sum+values[k],0);}
+function etfValues(shares,prices){return Object.fromEntries(Object.keys(shares).map(k=>[k,shares[k]*prices[k]]));}
 function sellEtfs(shares,prices,needed,mode){
- if(mode==='vtiFirst'){let sold=0;for(const k of ETF_KEYS){const value=Math.min(shares[k]*prices[k],Math.max(0,needed-sold));shares[k]=Math.max(0,shares[k]-value/prices[k]);sold+=value;}return sold;}
- const total=etfTotal(etfValues(shares,prices)),sold=Math.min(total,needed),keep=total>0?Math.max(0,1-sold/total):1;for(const k of ETF_KEYS)shares[k]*=keep;return sold;
+ const keys=Object.keys(shares);
+ if(mode==='vtiFirst'){let sold=0;for(const k of keys){const value=Math.min(shares[k]*prices[k],Math.max(0,needed-sold));shares[k]=Math.max(0,shares[k]-value/prices[k]);sold+=value;}return sold;}
+ const total=etfTotal(etfValues(shares,prices),keys),sold=Math.min(total,needed),keep=total>0?Math.max(0,1-sold/total):1;for(const k of keys)shares[k]*=keep;return sold;
 }
 function monthlyBudgetTotal(items){return items.reduce((sum,item)=>sum+item.amount/(item.frequency==='annual'?12:1),0);}
 function validateConfig(c){
+ const funds=c.customFunds===undefined?[]:c.customFunds;
+ if(!Array.isArray(funds)||funds.length>12)return '추가 종목은 최대 12개까지 등록할 수 있습니다.';
+ const ids=new Set();
+ for(const f of funds){
+  if(!f||typeof f.id!=='string'||!/^fund_[a-z0-9_]{1,48}$/.test(f.id)||ids.has(f.id))return '추가 종목 ID가 잘못되었거나 중복입니다.';
+  ids.add(f.id);
+  if(typeof f.name!=='string'||!f.name.trim()||f.name.length>80||typeof f.color!=='string'||!/^#[0-9a-f]{6}$/i.test(f.color))return '종목 이름(1~80자)과 색상을 확인하세요.';
+  for(const [key,low,high] of [['initial',0,10000000],['priceGrowth',-50,50],['yield',0,30],['dividendGrowth',-50,50],['vol',0,60],['crash',0,90],['tax',0,100],['severancePct',0,100]])if(!Number.isFinite(f[key])||f[key]<low||f[key]>high)return '추가 종목의 보유액·수익률·세율·비중 범위를 확인하세요.';
+  if(!Array.isArray(f.allocations)||f.allocations.length<30||f.allocations.length>90||f.allocations.some(v=>!Number.isFinite(v)||v<0||v>100))return '추가 종목의 연도별 비율은 0~100%로 입력하세요.';
+ }
  const finiteKeys=['startYear','birthYear','initialVti','initialSchd','initialCash','deployCash','annualSaving','savingGrowth','safeSavingPct','retireYears','horizon','inflation','annualWithdrawal','monthlyBudget','vtiPriceGrowth','schdPriceGrowth','vtiYield','schdYield','vtiDividendGrowth','schdDividendGrowth','cashYield','dividendTax','cashTax'];
  finiteKeys.push('initialAor','initialAoa','aorPriceGrowth','aoaPriceGrowth','aorYield','aoaYield','aorDividendGrowth','aoaDividendGrowth');
  for(const k of finiteKeys)if(!Number.isFinite(c[k]))return '모든 숫자 입력란을 채워 주세요.';
@@ -63,13 +96,13 @@ function validateConfig(c){
  if(c.savingGrowthMode==='percent'&&(c.savingGrowth<-100||c.savingGrowth>100))return '저축액 증가율은 -100~100% 범위로 입력하세요.';
  if(!Array.isArray(c.allocations)||(c.allocations.length<30||c.allocations.length>90)||c.allocations.some(v=>!Number.isFinite(v)||v<0||v>100))return '연도별 VTI 비율은 0~100% 범위로 입력하세요.';
  for(const key of ['aorAllocations','aoaAllocations'])if(!Array.isArray(c[key])||c[key].length<30||c[key].length>90||c[key].some(v=>!Number.isFinite(v)||v<0||v>100))return '연도별 AOR·AOA 비율은 0~100% 범위로 입력하세요.';
- if(Array.from({length:90},(_,i)=>etfRatiosFor(c,i)).some(r=>r.vti+r.aor+r.aoa>100))return 'ETF 내 VTI·AOR·AOA 비율 합계는 100% 이하로 입력하세요. 나머지는 SCHD입니다.';
+ if(Array.from({length:90},(_,i)=>etfRatiosFor(c,i)).some(r=>Object.entries(r).filter(([k])=>k!=='schd').reduce((sum,[,v])=>sum+v,0)>100+1e-8))return 'ETF 내 SCHD 외 모든 종목 비율 합계는 100% 이하로 입력하세요. 나머지는 SCHD입니다.';
  if(c.safeAllocations!==undefined&&(!Array.isArray(c.safeAllocations)||(c.safeAllocations.length<30||c.safeAllocations.length>90)||c.safeAllocations.some(v=>v!==null&&(!Number.isFinite(v)||v<0||v>100))))return '연도별 안전자산 비율은 0~100% 범위로 입력하세요.';
  if(c.budgetItems!==undefined&&(!Array.isArray(c.budgetItems)||c.budgetItems.length>100||c.budgetItems.some(item=>!item||typeof item.name!=='string'||item.name.length>80||!Number.isFinite(item.amount)||item.amount<0||item.amount>100000||!['monthly','annual'].includes(item.frequency))))return '생활비 항목은 100개 이하, 금액은 0~100,000만원 범위로 입력하세요.';
  if(c.extraAssets!==undefined&&(!Array.isArray(c.extraAssets)||(c.extraAssets.length<30||c.extraAssets.length>90)||c.extraAssets.some(v=>!Number.isFinite(v)||v<0||v>10000000)))return '연도별 추가 자산은 0~10,000,000만원 범위로 입력하세요.';
  if(!Number.isFinite(c.severanceAmount)||c.severanceAmount<0||c.severanceAmount>10000000||!['retirement','year'].includes(c.severanceTiming))return '세후 퇴직금은 0~10,000,000만원, 수령 시점은 퇴직 연도 또는 직접 지정으로 입력하세요.';
  if(c.severanceTiming==='year'&&(!Number.isInteger(c.severanceYear)||c.severanceYear<c.startYear||c.severanceYear>c.startYear+c.retireYears+c.horizon))return '퇴직금 수령 연도는 시작 연도부터 계산 마지막 연도 사이의 정수로 입력하세요.';
- if(!['annual','custom'].includes(c.severanceAllocation)||(c.severanceAllocation==='custom'&&(![c.severanceSafePct,c.severanceVtiPct,c.severanceAorPct,c.severanceAoaPct].every(v=>Number.isFinite(v)&&v>=0&&v<=100)||c.severanceSafePct+c.severanceVtiPct+c.severanceAorPct+c.severanceAoaPct>100)))return '퇴직금 배분 방식을 확인하세요. 별도 VTI·AOR·AOA·안전자산 비율은 각각 0~100%, 합계는 100% 이하로 입력하세요.';
+ if(!['annual','custom'].includes(c.severanceAllocation)||(c.severanceAllocation==='custom'&&(![c.severanceSafePct,c.severanceVtiPct,c.severanceAorPct,c.severanceAoaPct].every(v=>Number.isFinite(v)&&v>=0&&v<=100)||c.severanceSafePct+c.severanceVtiPct+c.severanceAorPct+c.severanceAoaPct+funds.reduce((sum,f)=>sum+f.severancePct,0)>100+1e-8)))return '퇴직금 배분 방식을 확인하세요. SCHD 외 모든 종목·안전자산 비율은 각각 0~100%, 합계는 100% 이하로 입력하세요.';
  return validateStress(c);
 }
 function validateStress(c){
@@ -86,26 +119,27 @@ function validateStress(c){
 }
 function simulate(c,marketPath=[],endElapsed=c.retireYears+c.horizon){
  const validation=validateConfig(c);if(validation)throw new Error(validation);
+ const keys=fundKeys(c);
  const rows=[],ratios=etfRatiosFor(c,0),shares={},prices={},dividends={};let cash=c.initialCash-c.deployCash;
  const initialSeverance=severanceFor(c,0),initialReceipt=receiptAllocationFor(c,0);cash+=initialReceipt.safe;
- for(const k of ETF_KEYS){prices[k]=1;dividends[k]=c[k+'Yield']/100;shares[k]=c['initial'+ETF_CAPS[k]]+c.deployCash*ratios[k]/100+initialReceipt[k];}
- const valuation=elapsed=>{const values=etfValues(shares,prices);return {elapsed,year:c.startYear+elapsed,age:c.startYear+elapsed-c.birthYear,...values,cash,total:etfTotal(values)+cash,deflator:Math.pow(1+c.inflation/100,elapsed)};};
- const zeroContributions=Object.fromEntries(ETF_KEYS.map(k=>[k+'Contribution',0]));
+ for(const k of keys){prices[k]=1;dividends[k]=fundSetting(c,k,'Yield')/100;shares[k]=fundSetting(c,k,'Initial')+c.deployCash*ratios[k]/100+initialReceipt[k];}
+ const valuation=elapsed=>{const values=etfValues(shares,prices);return {elapsed,year:c.startYear+elapsed,age:c.startYear+elapsed-c.birthYear,...values,cash,total:etfTotal(values,keys)+cash,deflator:Math.pow(1+c.inflation/100,elapsed)};};
+ const zeroContributions=Object.fromEntries(keys.map(k=>[k+'Contribution',0]));
  rows.push({...valuation(0),working:c.retireYears>0,saving:0,extraAsset:initialSeverance,severance:initialSeverance,...zeroContributions,safeContribution:0,netDividend:0,netInterest:0,grossDividend:0,withdrawal:0,stockSold:0,cashUsed:0,requestedWithdrawal:0,unfunded:0,income:0,budget:c.monthlyBudget*12});
  for(let t=1;t<=Math.min(endElapsed,c.retireYears+c.horizon);t++){
   const working=t<=c.retireYears,market=marketPath[t-1]||{},returns={},factors={},contributions={...zeroContributions};
-  let grossDividend=0;
-  for(const k of ETF_KEYS){
-   const r=market[k+'Return']??c[k+'PriceGrowth']/100,factor=market[k+'DividendFactor']??1;
+  let grossDividend=0,netDividend=0;
+  for(const k of keys){
+   const r=market[k+'Return']??fundSetting(c,k,'PriceGrowth')/100,factor=market[k+'DividendFactor']??1;
    if(![r,factor].every(Number.isFinite)||r<=-1||factor<0||factor>1)throw new Error('시장 경로의 수익률 또는 배당 삭감 값을 확인하세요.');
-   returns[k+'Return']=r;factors[k+'DividendFactor']=factor;dividends[k]*=factor;grossDividend+=shares[k]*dividends[k];prices[k]*=1+r;
+   returns[k+'Return']=r;factors[k+'DividendFactor']=factor;dividends[k]*=factor;grossDividend+=shares[k]*dividends[k];netDividend+=shares[k]*dividends[k]*(1-fundSetting(c,k,'Tax')/100);prices[k]*=1+r;
   }
-  const netDividend=grossDividend*(1-c.dividendTax/100),netInterest=cash*c.cashYield/100*(1-c.cashTax/100),budget=c.monthlyBudget*12*Math.pow(1+c.inflation/100,t);
+  const netInterest=cash*c.cashYield/100*(1-c.cashTax/100),budget=c.monthlyBudget*12*Math.pow(1+c.inflation/100,t);
   let saving=0,safeContribution=0,requestedWithdrawal=0,withdrawal=0,stockSold=0,cashUsed=0,unfunded=0,income=0;
   if(working){
-   for(const k of ETF_KEYS)shares[k]+=shares[k]*dividends[k]*(1-c.dividendTax/100)/prices[k];
+   for(const k of keys)shares[k]+=shares[k]*dividends[k]*(1-fundSetting(c,k,'Tax')/100)/prices[k];
    cash+=netInterest;saving=contributionFor(c,t-1);const annual=allocationFor(c,t-1);safeContribution=saving*annual.safe/100;cash+=safeContribution;
-   for(const k of ETF_KEYS){contributions[k+'Contribution']=saving*annual[k]/100;shares[k]+=contributions[k+'Contribution']/prices[k];}
+   for(const k of keys){contributions[k+'Contribution']=saving*annual[k]/100;shares[k]+=contributions[k+'Contribution']/prices[k];}
   }else{
    const naturalIncome=netDividend+netInterest;
    requestedWithdrawal=c.withdrawMode==='budget'?Math.max(0,budget-naturalIncome):c.annualWithdrawal*(c.inflateWithdrawal?Math.pow(1+c.inflation/100,t-c.retireYears-1):1);
@@ -116,15 +150,16 @@ function simulate(c,marketPath=[],endElapsed=c.retireYears+c.horizon){
    if(c.withdrawMode==='budget')cash+=Math.max(0,naturalIncome-budget);
   }
   const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),receipt=receiptAllocationFor(c,t);cash+=receipt.safe;
-  for(const k of ETF_KEYS)shares[k]+=receipt[k]/prices[k];
+  for(const k of keys)shares[k]+=receipt[k]/prices[k];
   rows.push({...valuation(t),working,saving,extraAsset,severance,...contributions,safeContribution,netDividend,netInterest,grossDividend,withdrawal,stockSold,cashUsed,requestedWithdrawal,unfunded,income,budget,marketMonths:market.months,...returns,...factors});
-  for(const k of ETF_KEYS)dividends[k]*=1+c[k+'DividendGrowth']/100;
+  for(const k of keys)dividends[k]*=1+fundSetting(c,k,'DividendGrowth')/100;
  }
  return rows;
 }
 const BUFFER_POLICIES={none:'주식 매도로 보충 안 함',annual:'매년 목표까지 보충',conditional:'회복 조건부 보충 + 최소 잔액'};
 function monthlyMarketPath(c,random){
- const result=[],rho=c.stressCorr/100,residual=Math.sqrt(Math.max(0,1-rho*rho)),shocks=[],sums={vti:0,schd:0,aor:0,aoa:0};let activeCount=0;
+ const keys=fundKeys(c);
+ const result=[],rho=c.stressCorr/100,residual=Math.sqrt(Math.max(0,1-rho*rho)),shocks=[],sums=Object.fromEntries(keys.map(k=>[k,0]));let activeCount=0;
  // Preserve the original VTI/SCHD draws; the two extra streams are drawn afterward.
  for(let i=0;i<(c.retireYears+c.horizon)*12;i++){
   const radius=Math.sqrt(-2*Math.log(random())),angle=2*Math.PI*random(),z=radius*Math.cos(angle),other=rho*z+residual*radius*Math.sin(angle),active=c.stressScope==='all'||i>=c.retireYears*12;
@@ -134,41 +169,46 @@ function monthlyMarketPath(c,random){
   const radius=Math.sqrt(-2*Math.log(random())),angle=2*Math.PI*random();
   shock.aor=shock.active?c.stressAorVol/100/Math.sqrt(12)*(rho*shock.z+residual*radius*Math.cos(angle)):0;
   shock.aoa=shock.active?c.stressAoaVol/100/Math.sqrt(12)*(rho*shock.z+residual*radius*Math.sin(angle)):0;
-  for(const k of ETF_KEYS)sums[k]+=shock[k];
  }
- const centers=Object.fromEntries(ETF_KEYS.map(k=>[k,c.stressReturnMode==='anchored'&&activeCount?sums[k]/activeCount:0]));
+ for(const k of keys.filter(k=>!ETF_KEYS.includes(k)))for(const shock of shocks){
+  const radius=Math.sqrt(-2*Math.log(random())),angle=2*Math.PI*random();shock[k]=shock.active?fundSetting(c,k,'Vol')/100/Math.sqrt(12)*(rho*shock.z+residual*radius*Math.cos(angle)):0;
+ }
+ for(const shock of shocks){for(const k of keys)sums[k]+=shock[k];
+ }
+ const centers=Object.fromEntries(keys.map(k=>[k,c.stressReturnMode==='anchored'&&activeCount?sums[k]/activeCount:0]));
  for(let t=1;t<=c.retireYears+c.horizon;t++){
-  const months=[],growth=Object.fromEntries(ETF_KEYS.map(k=>[k,1]));
+  const months=[],growth=Object.fromEntries(keys.map(k=>[k,1]));
   for(let m=0;m<12;m++){
    const shock=shocks[(t-1)*12+m],month={};
-   for(const k of ETF_KEYS){const r=Math.expm1(Math.log1p(c[k+'PriceGrowth']/100)/12+shock[k]-(shock.active?centers[k]:0));month[k+'Return']=r;growth[k]*=1+r;}
+   for(const k of keys){const r=Math.expm1(Math.log1p(fundSetting(c,k,'PriceGrowth')/100)/12+shock[k]-(shock.active?centers[k]:0));month[k+'Return']=r;growth[k]*=1+r;}
    months.push(month);
   }
-  result.push({...stressShock(growth.vti-1,growth.schd-1,c,growth.aor-1,growth.aoa-1),months});
+  result.push({...marketShock(Object.fromEntries(keys.map(k=>[k,growth[k]-1])),c),months});
  }
  return result;
 }
 function futureYearBudget(c,elapsed){let sum=0;for(let m=1;m<=12;m++)sum+=c.monthlyBudget*Math.pow(1+c.inflation/100,elapsed+m/12);return sum;}
 function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
  const validation=validateConfig(c);if(validation)throw new Error(validation);
+ const keys=fundKeys(c);
  const rows=simulate(c,marketPath,c.retireYears),prices={},dividends={},shares={};
- for(const k of ETF_KEYS){prices[k]=1;dividends[k]=c[k+'Yield']/100;}
- for(let i=0;i<c.retireYears;i++){const p=marketPath[i]||{};for(const k of ETF_KEYS){prices[k]*=1+(p[k+'Return']??c[k+'PriceGrowth']/100);dividends[k]*=(p[k+'DividendFactor']??1)*(1+c[k+'DividendGrowth']/100);}}
- const ret=rows.at(-1),reference={...prices},retEtfs=etfTotal(ret),fallback=etfRatiosFor(c,0),weights=Object.fromEntries(ETF_KEYS.map(k=>[k,retEtfs>0?ret[k]/retEtfs:fallback[k]/100]));
- for(const k of ETF_KEYS)shares[k]=ret[k]/prices[k];let cash=ret.cash,peakIndex=1;
- const indexValue=()=>ETF_KEYS.reduce((sum,k)=>sum+weights[k]*prices[k]/reference[k],0),sell=needed=>sellEtfs(shares,prices,needed,c.stressStockSale);
+ for(const k of keys){prices[k]=1;dividends[k]=fundSetting(c,k,'Yield')/100;}
+ for(let i=0;i<c.retireYears;i++){const p=marketPath[i]||{};for(const k of keys){prices[k]*=1+(p[k+'Return']??fundSetting(c,k,'PriceGrowth')/100);dividends[k]*=(p[k+'DividendFactor']??1)*(1+fundSetting(c,k,'DividendGrowth')/100);}}
+ const ret=rows.at(-1),reference={...prices},retEtfs=etfTotal(ret,keys),fallback=etfRatiosFor(c,0),weights=Object.fromEntries(keys.map(k=>[k,retEtfs>0?ret[k]/retEtfs:fallback[k]/100]));
+ for(const k of keys)shares[k]=ret[k]/prices[k];let cash=ret.cash,peakIndex=1;
+ const indexValue=()=>keys.reduce((sum,k)=>sum+weights[k]*prices[k]/reference[k],0),sell=needed=>sellEtfs(shares,prices,needed,c.stressStockSale);
  for(let t=c.retireYears+1;t<=c.retireYears+c.horizon;t++){
-  const withdrawalBase=etfTotal(etfValues(shares,prices))+cash,spendingCap=c.stressWithdrawalCap?withdrawalBase*c.stressMaxWithdrawalRate/100:null;
-  const p=marketPath[t-1]||{},fallbackMonths=()=>Array.from({length:12},()=>Object.fromEntries(ETF_KEYS.map(k=>[k+'Return',Math.expm1(Math.log1p(p[k+'Return']??c[k+'PriceGrowth']/100)/12)]))),months=p.months||fallbackMonths();
+  const withdrawalBase=etfTotal(etfValues(shares,prices),keys)+cash,spendingCap=c.stressWithdrawalCap?withdrawalBase*c.stressMaxWithdrawalRate/100:null;
+  const p=marketPath[t-1]||{},fallbackMonths=()=>Array.from({length:12},()=>Object.fromEntries(keys.map(k=>[k+'Return',Math.expm1(Math.log1p(p[k+'Return']??fundSetting(c,k,'PriceGrowth')/100)/12)]))),months=p.months||fallbackMonths();
   if(months.length!==12)throw new Error('월별 시장 경로는 매년 12개여야 합니다.');
   let netDividend=0,grossDividend=0,netInterest=0,requestedWithdrawal=0,withdrawal=0,stockSold=0,cashUsed=0,unfunded=0,income=0,budget=0,livingGap=0,maxMonthlyGapReal=0,firstGapMonth=null,firstUnfundedMonth=null,refillSold=0,downMarketSold=0,minCashMonths=Infinity;
-  const cuts=Object.fromEntries(ETF_KEYS.map(k=>[k,false])),ytd=Object.fromEntries(ETF_KEYS.map(k=>[k,1]));
+  const cuts=Object.fromEntries(keys.map(k=>[k,false])),ytd=Object.fromEntries(keys.map(k=>[k,1]));
   let hadEmpty=false,realIncome=0,realBudget=0,realNaturalIncome=0,realGap=0,capReduction=0,monthsNeedingWork=0;const yearStartIndex=indexValue();
   for(let m=1;m<=12;m++){
    const mr=months[m-1],returns={};
-   for(const k of ETF_KEYS){const r=mr[k+'Return']??((k==='aor'||k==='aoa')?Math.expm1(Math.log1p(p[k+'Return']??c[k+'PriceGrowth']/100)/12):NaN);if(!Number.isFinite(r)||r<=-1)throw new Error('월별 주가 수익률을 확인하세요.');returns[k]=r;}
-   const elapsed=t-1+m/12,deflator=Math.pow(1+c.inflation/100,elapsed),monthlyBudget=c.monthlyBudget*deflator,gross=ETF_KEYS.reduce((sum,k)=>sum+shares[k]*dividends[k],0)/12,dividend=gross*(1-c.dividendTax/100),interest=cash*c.cashYield/100/12*(1-c.cashTax/100);
-   for(const k of ETF_KEYS){prices[k]*=1+returns[k];ytd[k]*=1+returns[k];}peakIndex=Math.max(peakIndex,indexValue());
+   for(const k of keys){const r=mr[k+'Return']??((k!=='vti'&&k!=='schd')?Math.expm1(Math.log1p(p[k+'Return']??fundSetting(c,k,'PriceGrowth')/100)/12):NaN);if(!Number.isFinite(r)||r<=-1)throw new Error('월별 주가 수익률을 확인하세요.');returns[k]=r;}
+   const elapsed=t-1+m/12,deflator=Math.pow(1+c.inflation/100,elapsed),monthlyBudget=c.monthlyBudget*deflator,gross=keys.reduce((sum,k)=>sum+shares[k]*dividends[k],0)/12,dividend=keys.reduce((sum,k)=>sum+shares[k]*dividends[k]*(1-fundSetting(c,k,'Tax')/100),0)/12,interest=cash*c.cashYield/100/12*(1-c.cashTax/100);
+   for(const k of keys){prices[k]*=1+returns[k];ytd[k]*=1+returns[k];}peakIndex=Math.max(peakIndex,indexValue());
    const natural=dividend+interest,planned=c.withdrawMode==='budget'?monthlyBudget:natural+c.annualWithdrawal/12*(c.inflateWithdrawal?Math.pow(1+c.inflation/100,t-c.retireYears-1+(m-1)/12):1),allowed=spendingCap===null?planned:Math.min(planned,spendingCap/12),naturalUsed=Math.min(natural,allowed),request=Math.max(0,allowed-naturalUsed);
    const fromCash=Math.min(cash,request);cash-=fromCash;const fromStock=sell(Math.max(0,request-fromCash)),missing=Math.max(0,request-fromCash-fromStock),paid=naturalUsed+fromCash+fromStock,gap=Math.max(0,monthlyBudget-paid);
    cash+=Math.max(0,natural-naturalUsed);capReduction+=Math.max(0,planned-allowed);if(gap>.00001)monthsNeedingWork++;
@@ -177,18 +217,18 @@ function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
    netDividend+=dividend;grossDividend+=gross;netInterest+=interest;requestedWithdrawal+=request;withdrawal+=fromCash+fromStock;stockSold+=fromStock;cashUsed+=fromCash;unfunded+=missing;income+=paid;budget+=monthlyBudget;livingGap+=gap;maxMonthlyGapReal=Math.max(maxMonthlyGapReal,gap/deflator);
    realIncome+=paid/deflator;realBudget+=monthlyBudget/deflator;realNaturalIncome+=natural/deflator;realGap+=gap/deflator;
    minCashMonths=Math.min(minCashMonths,monthlyBudget>0?cash/monthlyBudget:Infinity);
-   if(cash+etfTotal(etfValues(shares,prices))<.00001)hadEmpty=true;
+   if(cash+etfTotal(etfValues(shares,prices),keys)<.00001)hadEmpty=true;
    // Each fund's observed loss affects only its future distributions.
-   for(const k of ETF_KEYS){if(!cuts[k]&&ytd[k]<=.8+1e-12){dividends[k]*=Math.max(0,1+(ytd[k]-1)*c.stressDividendCut/100);cuts[k]=true;}dividends[k]*=Math.pow(1+c[k+'DividendGrowth']/100,1/12);}
+   for(const k of keys){if(!cuts[k]&&ytd[k]<=.8+1e-12){dividends[k]*=Math.max(0,1+(ytd[k]-1)*c.stressDividendCut/100);cuts[k]=true;}dividends[k]*=Math.pow(1+fundSetting(c,k,'DividendGrowth')/100,1/12);}
   }
-  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),receipt=receiptAllocationFor(c,t);cash+=receipt.safe;for(const k of ETF_KEYS)shares[k]+=receipt[k]/prices[k];
+  const severance=severanceFor(c,t),extraAsset=extraAssetFor(c,t),receipt=receiptAllocationFor(c,t);cash+=receipt.safe;for(const k of keys)shares[k]+=receipt[k]/prices[k];
   const nextBudget=futureYearBudget(c,t),cashTarget=nextBudget*c.stressBufferYears,cashFloor=nextBudget*c.stressBufferFloor,healthy=indexValue()>=yearStartIndex*(1-1e-10)&&indexValue()>=peakIndex*(1-c.stressRecoveryDrawdown/100)*(1-1e-10);
   const replenishTo=policy==='annual'?cashTarget:policy==='conditional'?(healthy?cashTarget:cashFloor):0;
   if(t<c.retireYears+c.horizon&&cash<replenishTo){refillSold=sell(replenishTo-cash);cash+=refillSold;if(indexValue()<peakIndex*(1-1e-8))downMarketSold+=refillSold;}
   const cashReinvested=c.stressCashCap?Math.max(0,cash-cashTarget):0;
-  if(cashReinvested>0){const ratios=etfRatiosFor(c,t-1);cash-=cashReinvested;for(const k of ETF_KEYS)shares[k]+=cashReinvested*ratios[k]/100/prices[k];}
+  if(cashReinvested>0){const ratios=etfRatiosFor(c,t-1);cash-=cashReinvested;for(const k of keys)shares[k]+=cashReinvested*ratios[k]/100/prices[k];}
   const deflator=Math.pow(1+c.inflation/100,t),nextMonthly=c.monthlyBudget*Math.pow(1+c.inflation/100,t+1/12),values=etfValues(shares,prices);
-  rows.push({elapsed:t,year:c.startYear+t,age:c.startYear+t-c.birthYear,working:false,saving:0,extraAsset,severance,...Object.fromEntries(ETF_KEYS.map(k=>[k+'Contribution',0])),safeContribution:0,...values,cash,total:etfTotal(values)+cash,deflator,netDividend,grossDividend,netInterest,requestedWithdrawal,withdrawal,stockSold,cashUsed,unfunded,income,budget,realIncome,realBudget,realNaturalIncome,realGap,livingGap,maxMonthlyGapReal,firstGapMonth,firstUnfundedMonth,hadEmpty,hadLivingGap:firstGapMonth!==null,hadUnfunded:firstUnfundedMonth!==null,withdrawalBase,spendingCap,spendingRate:withdrawalBase>0?income/withdrawalBase*100:0,capReduction,monthsNeedingWork,workNeeded:livingGap,realWorkNeeded:realGap,refillSold,cashReinvested,marketMonths:months,downMarketSold,minCashMonths:Number.isFinite(minCashMonths)?minCashMonths:null,cashMonths:nextMonthly>0?cash/nextMonthly:null,cashTarget,cashFloor,marketDrawdown:1-indexValue()/peakIndex,refillEligible:healthy,...Object.fromEntries(ETF_KEYS.map(k=>[k+'Return',ytd[k]-1]))});
+  rows.push({elapsed:t,year:c.startYear+t,age:c.startYear+t-c.birthYear,working:false,saving:0,extraAsset,severance,...Object.fromEntries(keys.map(k=>[k+'Contribution',0])),safeContribution:0,...values,cash,total:etfTotal(values,keys)+cash,deflator,netDividend,grossDividend,netInterest,requestedWithdrawal,withdrawal,stockSold,cashUsed,unfunded,income,budget,realIncome,realBudget,realNaturalIncome,realGap,livingGap,maxMonthlyGapReal,firstGapMonth,firstUnfundedMonth,hadEmpty,hadLivingGap:firstGapMonth!==null,hadUnfunded:firstUnfundedMonth!==null,withdrawalBase,spendingCap,spendingRate:withdrawalBase>0?income/withdrawalBase*100:0,capReduction,monthsNeedingWork,workNeeded:livingGap,realWorkNeeded:realGap,refillSold,cashReinvested,marketMonths:months,downMarketSold,minCashMonths:Number.isFinite(minCashMonths)?minCashMonths:null,cashMonths:nextMonthly>0?cash/nextMonthly:null,cashTarget,cashFloor,marketDrawdown:1-indexValue()/peakIndex,refillEligible:healthy,...Object.fromEntries(keys.map(k=>[k+'Return',ytd[k]-1]))});
  }
  return rows;
 }
@@ -207,24 +247,29 @@ function randomMarketPath(c,random){
   const a=Math.expm1(Math.log1p(c.aorPriceGrowth/100)+c.stressAorVol/100*(rho*zs[i]+residual*radius*Math.cos(angle))),b=Math.expm1(Math.log1p(c.aoaPriceGrowth/100)+c.stressAoaVol/100*(rho*zs[i]+residual*radius*Math.sin(angle)));
   path[i]=stressShock(path[i].vtiReturn,path[i].schdReturn,c,a,b);
  }
+ for(const k of fundKeys(c).filter(k=>!ETF_KEYS.includes(k)))for(let i=0;i<path.length;i++){
+  const radius=Math.sqrt(-2*Math.log(random())),angle=2*Math.PI*random();if(c.stressScope==='retirement'&&i<c.retireYears)continue;
+  const r=Math.expm1(Math.log1p(fundSetting(c,k,'PriceGrowth')/100)+fundSetting(c,k,'Vol')/100*(rho*zs[i]+residual*radius*Math.cos(angle)));
+  path[i][k+'Return']=r;path[i][k+'DividendFactor']=r<=-.2?Math.max(0,1+r*c.stressDividendCut/100):1;
+ }
  return path;
 }
 function stressConfig(c){return {...c,withdrawMode:c.stressSpending==='budget'?'budget':c.withdrawMode};}
 function crashMarketPath(c,late=false){
- const losses={vti:c.stressCrash,schd:c.stressCrash,aor:c.stressAorCrash,aoa:c.stressAoaCrash};
+ const keys=fundKeys(c),losses=Object.fromEntries(keys.map(k=>[k,fundSetting(c,k,'Crash')]));
  if(c.stressReturnMode==='anchored'){
   const total=c.horizon*12,duration=Math.min(c.stressCrashDuration*12,Math.floor(total/2)),start=late?total-2*duration:0;
   return Array.from({length:c.retireYears+c.horizon},(_,i)=>{
-   const growth=Object.fromEntries(ETF_KEYS.map(k=>[k,1]));
+   const growth=Object.fromEntries(keys.map(k=>[k,1]));
    const months=Array.from({length:12},(_,m)=>{
     const at=(i-c.retireYears)*12+m,inCrash=at>=start&&at<start+duration,inRecovery=at>=start+duration&&at<start+2*duration,month={};
-    for(const k of ETF_KEYS){const base=Math.log1p(c[k+'PriceGrowth']/100)/12,crash=Math.log1p(-losses[k]/100)/12,r=Math.expm1(losses[k]===0?base:inCrash?crash:inRecovery?2*base-crash:base);month[k+'Return']=r;growth[k]*=1+r;}return month;
+    for(const k of keys){const base=Math.log1p(fundSetting(c,k,'PriceGrowth')/100)/12,crash=Math.log1p(-losses[k]/100)/12,r=Math.expm1(losses[k]===0?base:inCrash?crash:inRecovery?2*base-crash:base);month[k+'Return']=r;growth[k]*=1+r;}return month;
    });
-   return {...stressShock(growth.vti-1,growth.schd-1,c,growth.aor-1,growth.aoa-1),months};
+   return {...marketShock(Object.fromEntries(keys.map(k=>[k,growth[k]-1])),c),months};
   });
  }
  const duration=Math.min(c.horizon,c.stressCrashDuration),start=late?c.horizon-duration:0;
- return Array.from({length:c.retireYears+c.horizon},(_,i)=>i>=c.retireYears+start&&i<c.retireYears+start+duration?stressShock(-losses.vti/100,-losses.schd/100,c,-losses.aor/100,-losses.aoa/100):{});
+ return Array.from({length:c.retireYears+c.horizon},(_,i)=>i>=c.retireYears+start&&i<c.retireYears+start+duration?marketShock(Object.fromEntries(keys.map(k=>[k,-losses[k]/100])),c):{});
 }
 function stressPathSummary(rows,c){
  const retired=rows.slice(c.retireYears+1),gap=r=>r.livingGap??Math.max(0,r.budget-r.income),firstGap=retired.find(r=>r.hadLivingGap??(gap(r)>.00001)),firstUnfunded=retired.find(r=>r.hadUnfunded??(r.unfunded>.00001)),firstEmpty=retired.find(r=>r.hadEmpty??(r.total<.00001));
@@ -245,4 +290,4 @@ function finishStress(acc,c,runner=simulate){
 }
 
 // @single-file-exports
-export { ETF_KEYS, ETF_CAPS, finalSavingSafeFor, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };
+export { fundKeys, fundName, fundSetting, newFund, FUND_PRESETS, ETF_KEYS, ETF_CAPS, finalSavingSafeFor, etfRatiosFor, allocationFor, DEFAULTS, BUFFER_POLICIES, normalizeConfig, contributionFor, safePctFor, stockPctFor, severanceYearFor, severanceFor, extraAssetFor, severanceAllocationFor, receiptAllocationFor, monthlyBudgetTotal, validateConfig, validateStress, simulate, monthlyMarketPath, futureYearBudget, simulateMonthly, stressRandom, stressShock, randomMarketPath, stressConfig, crashMarketPath, stressPathSummary, createStressAccumulator, addStressPath, stressQuantile, finishStress };
