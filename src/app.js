@@ -298,7 +298,11 @@ function renderSummary(){
  $('retireAssets').innerHTML=assetHtml(displayValue(ret.total,ret));
  $('retireAssetsNote').textContent=ret.year+'년 말 · '+basis;
  $('retireIncome').innerHTML=decimal(displayValue(first.income/12,first))+'<span> 만원</span>';
- $('retireIncomeNote').textContent=first.year+'년 · 배당·이자 + 추가 인출';
+ for(const [id,value] of [['retireIncomeDividend',first.netDividend],['retireIncomeInterest',first.netInterest],['retireIncomeWithdrawal',first.withdrawal]])$(id).textContent=decimal(displayValue(value/12,first))+'만원/월';
+ $('retireIncomeNote').textContent=first.year+'년 · 월평균 · '+basis;
+ const surplus=config.withdrawMode==='budget'?Math.max(0,first.netDividend+first.netInterest-first.budget):0;
+ $('retireIncomeSurplus').classList.toggle('hidden',surplus<=.00001);
+ $('retireIncomeSurplus').textContent=surplus>.00001?'배당·이자 중 월 '+decimal(displayValue(surplus/12,first))+'만원은 생활비에 쓰지 않고 안전자산에 보관합니다.':'';
  $('afterTenAssets').innerHTML=ten?assetHtml(displayValue(ten.total,ten)):'기간 부족';
  $('afterTenNote').textContent=ten?ten.year+'년 말 · '+ten.age+'세':'은퇴 후 계산 기간을 10년 이상으로 설정하세요.';
  const monthly=[first.netDividend/12,first.netInterest/12,first.withdrawal/12],sum=monthly.reduce((a,b)=>a+b,0),colors=['#176c60','#9aafa3','#426a9c'];
