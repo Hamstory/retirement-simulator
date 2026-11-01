@@ -470,8 +470,21 @@ function renderHistory(){
     if(writeRecords([...savedRecords,record].sort((a,b)=>Date.parse(b.savedAt)-Date.parse(a.savedAt)))){renderHistory();historyMessage('삭제한 기록을 복원했습니다.');}
    });$('historyStatus').append(undo);
   });
-  actions.append(load,backup,remove);item.append(copy,actions);list.append(item);
+  const overwrite=historyElement('button','history-overwrite','덮어쓰기');overwrite.type='button';overwrite.setAttribute('aria-label',record.name+' 기록을 현재 설정으로 덮어쓰기');overwrite.setAttribute('title','이 기록의 이름을 유지하고 현재 설정으로 덮어씁니다.');overwrite.addEventListener('click',()=>overwriteRecord(record.id));
+  actions.append(load,overwrite,backup,remove);item.append(copy,actions);list.append(item);
  }
+}
+function overwriteRecord(id){
+ readFields();const error=validateConfig(config);if(error){setError(error);historyMessage('입력을 확인한 뒤 덮어쓰세요. '+error,true);return;}
+ const record=savedRecords.find(r=>r.id===id);if(!record){historyMessage('덮어쓸 기록을 찾을 수 없습니다.',true);return;}
+ const previous=structuredClone(record),updated={...record,savedAt:new Date().toISOString(),config:structuredClone(config)};
+ if(!writeRecords(savedRecords.map(r=>r.id===id?updated:r)))return;
+ renderHistory();historyMessage('‘'+record.name+'’ 기록을 현재 설정으로 덮어썼습니다.');$('saveStatus').textContent='기존 기록 덮어쓰기 완료';
+ const undo=historyElement('button','preset-link','되돌리기');undo.type='button';undo.addEventListener('click',()=>{
+  if(JSON.stringify(savedRecords.find(r=>r.id===id))!==JSON.stringify(updated)){historyMessage('기록이 다시 변경되어 이전 덮어쓰기를 되돌릴 수 없습니다.',true);return;}
+  if(writeRecords(savedRecords.map(r=>r.id===id?previous:r))){renderHistory();historyMessage('덮어쓰기 전 기록을 복원했습니다. 현재 입력은 유지됩니다.');}
+  else $('historyStatus').append(undo);
+ });$('historyStatus').append(undo);
 }
 function openHistory(focusName=false){
  $('historyPanel').classList.remove('hidden');$('loadConfig').setAttribute('aria-expanded','true');renderHistory();
