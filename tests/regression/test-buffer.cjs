@@ -30,9 +30,9 @@ c={...base(),stressScope:'retirement'};const a=monthlyMarketPath(c,stressRandom(
  const old={...base(),allocations:Array(30).fill(70),safeAllocations:Array(30).fill(null)};delete old.extraAssets;const migrated=normalizeConfig(old);assert.equal(migrated.allocations.length,90);assert.equal(migrated.allocations[80],70);assert.equal(migrated.extraAssets[80],0);assert.ok(validateConfig({...base(),allocations:[]}));assert.ok(validateConfig({...base(),extraAssets:Array(90).fill(-1)}));assert.ok(validateConfig({...base(),stressBufferFloor:4,stressBufferYears:3}));
  c={...fixture(),initialVti:10000,inflation:3};rows=simulateMonthly(c,[],'conditional');for(const r of rows.slice(1)){near(r.realIncome/12,10);near(r.realBudget/12,10);}
 (async()=>{
- const app=boot(new Map(),{timers:fn=>setImmediate(fn)}),n=app.nodes,cells=Array.from({length:10},()=>({}));
+ const app=boot(new Map(),{timers:fn=>setImmediate(fn)}),n=app.nodes,cells=Array.from({length:11},()=>({}));
  const edit=(year,kind,value)=>n.allocationRows.trigger('input',{target:{matches:()=>true,dataset:{year:String(year),kind},value:String(value),closest:()=>({querySelectorAll:()=>cells})}});
- await edit(9,'extra',10000);await edit(9,'safe',100);assert.equal(app.api.getConfig().extraAssets[9],10000);assert.ok(cells[9].innerHTML.includes('11,200'));
+ await edit(9,'extra',10000);await edit(9,'safe',100);assert.equal(app.api.getConfig().extraAssets[9],10000);assert.ok(cells[10].innerHTML.includes('11,200'));
  await edit(35,'extra',3000);assert.equal(app.api.getConfig().extraAssets[35],3000);assert.ok(n.allocationRows.innerHTML.includes('2062년'));
  n.stressCount.value='100';await n.stressCount.trigger('input');await n.runStress.click();assert.equal(Object.keys(app.api.getStress().strategies).length,3);assert.ok(n.bufferStrategyRows.innerHTML.includes('회복 조건부'));assert.ok(n.bufferCashChart.innerHTML.includes('<path'));assert.ok(!n.bufferCashChart.innerHTML.includes('NaN'));assert.ok(n.stressTraceRows.innerHTML.includes('년차'));assert.ok(n.bufferTraceNote.textContent.includes('개월'));
  const compared=app.api.getStress().strategies;assert.equal(compared.none.count,100);assert.equal(compared.annual.count,100);assert.equal(compared.conditional.count,100);

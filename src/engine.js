@@ -7,15 +7,16 @@ DEFAULTS.safeAllocations=Array(90).fill(null);
 DEFAULTS.extraAssets=Array(90).fill(0);
 Object.assign(DEFAULTS,{severanceAmount:0,severanceTiming:'retirement',severanceYear:2026});
 Object.assign(DEFAULTS,{severanceAllocation:'annual',severanceSafePct:20,severanceVtiPct:64});
-const ETF_KEYS=['vti','schd','aor','aoa'];
-const ETF_CAPS={vti:'Vti',schd:'Schd',aor:'Aor',aoa:'Aoa'};
+const ETF_KEYS=['vti','schd','aor','aoa','qqq'];
+const ETF_CAPS={vti:'Vti',schd:'Schd',aor:'Aor',aoa:'Aoa',qqq:'Qqq'};
 Object.assign(DEFAULTS,{initialAor:0,initialAoa:0,aorPriceGrowth:3,aoaPriceGrowth:3,aorYield:2.58,aoaYield:2.12,aorDividendGrowth:3,aoaDividendGrowth:3,stressAorVol:12,stressAoaVol:15,stressAorCrash:25,stressAoaCrash:30,severanceAorPct:0,severanceAoaPct:0,aorAllocations:Array(90).fill(0),aoaAllocations:Array(90).fill(0)});
+Object.assign(DEFAULTS,{initialQqq:0,qqqPriceGrowth:3,qqqYield:.42,qqqDividendGrowth:3,stressQqqVol:25,stressQqqCrash:45,severanceQqqPct:0,qqqAllocations:Array(90).fill(0)});
 Object.assign(DEFAULTS,{stressWithdrawalCap:false,stressMaxWithdrawalRate:5});
 Object.assign(DEFAULTS,{finalSavingSafeOnly:false});
 Object.assign(DEFAULTS,{stressBufferPolicy:'conditional',stressBufferYears:3,stressBufferFloor:1,stressRecoveryDrawdown:10,stressStockSale:'proportional',stressReturnMode:'anchored',stressCashCap:true});
 // Registered funds use the same engine as the original four ETFs; no product-specific branches.
 DEFAULTS.customFunds=[];
-DEFAULTS.unusedFunds=['aor','aoa'];
+DEFAULTS.unusedFunds=['aor','aoa','qqq'];
 DEFAULTS.startingInputs=[];
 function fundKeys(c){return [...ETF_KEYS,...(c.customFunds||[]).map(f=>f.id)];}
 function fundName(c,k){return ETF_KEYS.includes(k)?k.toUpperCase():(c.customFunds||[]).find(f=>f.id===k)?.name||k;}
@@ -39,8 +40,9 @@ function fundHasAllocation(c,k){
 }
 function normalizeConfig(incoming){
  const c={...structuredClone(DEFAULTS),...structuredClone(incoming)};
- for(const [key,fallback] of [['allocations',80],['safeAllocations',null],['extraAssets',0],['aorAllocations',0],['aoaAllocations',0]])if(Array.isArray(c[key])&&c[key].length>=30&&c[key].length<=90){const old=c[key];c[key]=Array.from({length:90},(_,i)=>i<old.length?old[i]:(key==='allocations'||key==='aorAllocations'||key==='aoaAllocations')?(old[old.length-1]??fallback):fallback);}
+ for(const [key,fallback] of [['allocations',80],['safeAllocations',null],['extraAssets',0],['aorAllocations',0],['aoaAllocations',0],['qqqAllocations',0]])if(Array.isArray(c[key])&&c[key].length>=30&&c[key].length<=90){const old=c[key];c[key]=Array.from({length:90},(_,i)=>i<old.length?old[i]:(key==='allocations'||key==='aorAllocations'||key==='aoaAllocations'||key==='qqqAllocations')?(old[old.length-1]??fallback):fallback);}
  if(Array.isArray(c.customFunds))for(const f of c.customFunds)if(f&&Array.isArray(f.allocations)&&f.allocations.length>=30&&f.allocations.length<=90)f.allocations=Array.from({length:90},(_,i)=>f.allocations[i]??f.allocations.at(-1));
+ if(!Object.hasOwn(incoming,'qqqAllocations')&&Array.isArray(c.unusedFunds))c.unusedFunds=[...new Set([...c.unusedFunds,'qqq'])];
  if(!validateConfig(c)){const keys=fundKeys(c);c.unusedFunds=incoming.unusedFunds===undefined?keys.filter(k=>!fundHasAllocation(c,k)):c.unusedFunds.filter(k=>!fundHasAllocation(c,k));}
  return c;
 }
@@ -48,9 +50,9 @@ function contributionFor(c,index){return Math.max(0,c.savingGrowthMode==='fixed'
 function safePctFor(c,index){return c.safeAllocations?.[index]??c.safeSavingPct;}
 function stockPctFor(c,index){return c.allocations[index]??c.allocations[c.allocations.length-1];}
 function etfRatiosFor(c,index){
- const vti=stockPctFor(c,index),aor=c.aorAllocations?.[index]??c.aorAllocations?.at(-1)??0,aoa=c.aoaAllocations?.[index]??c.aoaAllocations?.at(-1)??0;
+ const vti=stockPctFor(c,index),aor=c.aorAllocations?.[index]??c.aorAllocations?.at(-1)??0,aoa=c.aoaAllocations?.[index]??c.aoaAllocations?.at(-1)??0,qqq=c.qqqAllocations?.[index]??c.qqqAllocations?.at(-1)??0;
  const custom=Object.fromEntries((c.customFunds||[]).map(f=>[f.id,f.allocations[index]??f.allocations.at(-1)]));
- return {vti,schd:Math.max(0,100-vti-aor-aoa-Object.values(custom).reduce((a,b)=>a+b,0)),aor,aoa,...custom};
+ return {vti,schd:Math.max(0,100-vti-aor-aoa-qqq-Object.values(custom).reduce((a,b)=>a+b,0)),aor,aoa,qqq,...custom};
 }
 function finalSavingSafeFor(c,index){return c.finalSavingSafeOnly===true&&c.retireYears>0&&index===c.retireYears-1;}
 function allocationFor(c,index,applyFinalYear=true){const safe=applyFinalYear&&finalSavingSafeFor(c,index)?100:safePctFor(c,index),ratios=etfRatiosFor(c,index);return {safe,...Object.fromEntries(fundKeys(c).map(k=>[k,(100-safe)*ratios[k]/100]))};}
@@ -59,9 +61,9 @@ function severanceFor(c,elapsed){return c.startYear+elapsed===severanceYearFor(c
 function extraAssetFor(c,elapsed){return (elapsed>0?(c.extraAssets?.[elapsed-1]??0):0)+severanceFor(c,elapsed);}
 function severanceAllocationFor(c,index,applyFinalYear=true){
  if(c.severanceAllocation!=='custom')return allocationFor(c,index,applyFinalYear);
- const safe=c.severanceSafePct,vti=c.severanceVtiPct,aor=c.severanceAorPct,aoa=c.severanceAoaPct;
+ const safe=c.severanceSafePct,vti=c.severanceVtiPct,aor=c.severanceAorPct,aoa=c.severanceAoaPct,qqq=c.severanceQqqPct;
  const custom=Object.fromEntries((c.customFunds||[]).map(f=>[f.id,f.severancePct]));
- return {safe,vti,aor,aoa,...custom,schd:Math.max(0,100-safe-vti-aor-aoa-Object.values(custom).reduce((a,b)=>a+b,0))};
+ return {safe,vti,aor,aoa,qqq,...custom,schd:Math.max(0,100-safe-vti-aor-aoa-qqq-Object.values(custom).reduce((a,b)=>a+b,0))};
 }
 function receiptAllocationFor(c,elapsed){
  const index=Math.max(0,elapsed-1),other=elapsed>0?(c.extraAssets?.[index]??0):0,severance=severanceFor(c,elapsed),ratio=severanceAllocationFor(c,index,elapsed>0),annual=allocationFor(c,index);
@@ -87,14 +89,14 @@ function validateConfig(c){
   if(!Array.isArray(f.allocations)||f.allocations.length<30||f.allocations.length>90||f.allocations.some(v=>!Number.isFinite(v)||v<0||v>100))return '추가 종목의 연도별 비율은 0~100%로 입력하세요.';
  }
  const known=fundKeys(c);
- if(!Array.isArray(c.unusedFunds)||c.unusedFunds.length>16||new Set(c.unusedFunds).size!==c.unusedFunds.length||c.unusedFunds.some(k=>!known.includes(k)))return '종목 사용 상태를 확인하세요.';
+ if(!Array.isArray(c.unusedFunds)||c.unusedFunds.length>known.length||new Set(c.unusedFunds).size!==c.unusedFunds.length||c.unusedFunds.some(k=>!known.includes(k)))return '종목 사용 상태를 확인하세요.';
  const start=c.startingInputs,allowed=['total','safe',...known.filter(k=>k!=='schd')];
  if(!Array.isArray(start)||start.length>18||start.some(x=>!x||!allowed.includes(x.id)||!Number.isFinite(x.value)||x.value<0||x.value>(x.id==='total'?1000000000:100))||new Set(start.map(x=>x.id)).size!==start.length)return '시작 자금 금액·배분 비율을 확인하세요.';
  if(start.length&&(!start.some(x=>x.id==='total')||!start.some(x=>x.id==='safe')||start.filter(x=>x.id!=='total'&&x.id!=='safe').reduce((sum,x)=>sum+x.value,0)>100+1e-8))return '시작 자금은 금액·안전자산 비율을 채우고 SCHD 외 ETF 비율 합계를 100% 이하로 입력하세요.';
  const finiteKeys=['startYear','birthYear','initialVti','initialSchd','initialCash','deployCash','annualSaving','savingGrowth','safeSavingPct','retireYears','horizon','inflation','annualWithdrawal','monthlyBudget','vtiPriceGrowth','schdPriceGrowth','vtiYield','schdYield','vtiDividendGrowth','schdDividendGrowth','cashYield','dividendTax','cashTax'];
- finiteKeys.push('initialAor','initialAoa','aorPriceGrowth','aoaPriceGrowth','aorYield','aoaYield','aorDividendGrowth','aoaDividendGrowth');
+ finiteKeys.push('initialAor','initialAoa','aorPriceGrowth','aoaPriceGrowth','aorYield','aoaYield','aorDividendGrowth','aoaDividendGrowth','initialQqq','qqqPriceGrowth','qqqYield','qqqDividendGrowth');
  for(const k of finiteKeys)if(!Number.isFinite(c[k]))return '모든 숫자 입력란을 채워 주세요.';
- if(c.initialAor<0||c.initialAoa<0||c.initialVti<0||c.initialSchd<0||c.initialCash<0||c.deployCash<0||c.annualSaving<0||c.annualWithdrawal<0||c.monthlyBudget<0)return '자산·저축액·인출액에는 0 이상의 금액을 입력하세요.';
+ if(c.initialQqq<0||c.initialAor<0||c.initialAoa<0||c.initialVti<0||c.initialSchd<0||c.initialCash<0||c.deployCash<0||c.annualSaving<0||c.annualWithdrawal<0||c.monthlyBudget<0)return '자산·저축액·인출액에는 0 이상의 금액을 입력하세요.';
  if(c.deployCash>c.initialCash)return '처음 투자할 현금이 현재 보유 현금보다 큽니다.';
  if(c.retireYears<0||c.retireYears>30||!Number.isInteger(c.retireYears)||c.horizon<1||c.horizon>60||!Number.isInteger(c.horizon))return '저축 기간은 0~30년, 은퇴 후 기간은 1~60년의 정수로 입력하세요.';
  if(c.startYear<2020||c.startYear>2100||!Number.isInteger(c.startYear)||!Number.isInteger(c.birthYear)||c.birthYear<1900||c.birthYear>c.startYear)return '시작 연도와 출생 연도를 확인하세요.';
@@ -106,18 +108,18 @@ function validateConfig(c){
  if(!['percent','fixed'].includes(c.savingGrowthMode)||!['extra','budget'].includes(c.withdrawMode)||!['stocks','vtiFirst','cashFirst'].includes(c.withdrawSource))return '선택한 계산 방식을 확인하세요.';
  if(c.savingGrowthMode==='percent'&&(c.savingGrowth<-100||c.savingGrowth>100))return '저축액 증가율은 -100~100% 범위로 입력하세요.';
  if(!Array.isArray(c.allocations)||(c.allocations.length<30||c.allocations.length>90)||c.allocations.some(v=>!Number.isFinite(v)||v<0||v>100))return '연도별 VTI 비율은 0~100% 범위로 입력하세요.';
- for(const key of ['aorAllocations','aoaAllocations'])if(!Array.isArray(c[key])||c[key].length<30||c[key].length>90||c[key].some(v=>!Number.isFinite(v)||v<0||v>100))return '연도별 AOR·AOA 비율은 0~100% 범위로 입력하세요.';
+ for(const key of ['aorAllocations','aoaAllocations','qqqAllocations'])if(!Array.isArray(c[key])||c[key].length<30||c[key].length>90||c[key].some(v=>!Number.isFinite(v)||v<0||v>100))return '연도별 AOR·AOA·QQQ 비율은 0~100% 범위로 입력하세요.';
  if(Array.from({length:90},(_,i)=>etfRatiosFor(c,i)).some(r=>Object.entries(r).filter(([k])=>k!=='schd').reduce((sum,[,v])=>sum+v,0)>100+1e-8))return 'ETF 내 SCHD 외 모든 종목 비율 합계는 100% 이하로 입력하세요. 나머지는 SCHD입니다.';
  if(c.safeAllocations!==undefined&&(!Array.isArray(c.safeAllocations)||(c.safeAllocations.length<30||c.safeAllocations.length>90)||c.safeAllocations.some(v=>v!==null&&(!Number.isFinite(v)||v<0||v>100))))return '연도별 안전자산 비율은 0~100% 범위로 입력하세요.';
  if(c.budgetItems!==undefined&&(!Array.isArray(c.budgetItems)||c.budgetItems.length>100||c.budgetItems.some(item=>!item||typeof item.name!=='string'||item.name.length>80||!Number.isFinite(item.amount)||item.amount<0||item.amount>100000||!['monthly','annual'].includes(item.frequency))))return '생활비 항목은 100개 이하, 금액은 0~100,000만원 범위로 입력하세요.';
  if(c.extraAssets!==undefined&&(!Array.isArray(c.extraAssets)||(c.extraAssets.length<30||c.extraAssets.length>90)||c.extraAssets.some(v=>!Number.isFinite(v)||v<0||v>10000000)))return '연도별 추가 자산은 0~10,000,000만원 범위로 입력하세요.';
  if(!Number.isFinite(c.severanceAmount)||c.severanceAmount<0||c.severanceAmount>10000000||!['retirement','year'].includes(c.severanceTiming))return '세후 퇴직금은 0~10,000,000만원, 수령 시점은 퇴직 연도 또는 직접 지정으로 입력하세요.';
  if(c.severanceTiming==='year'&&(!Number.isInteger(c.severanceYear)||c.severanceYear<c.startYear||c.severanceYear>c.startYear+c.retireYears+c.horizon))return '퇴직금 수령 연도는 시작 연도부터 계산 마지막 연도 사이의 정수로 입력하세요.';
- if(!['annual','custom'].includes(c.severanceAllocation)||(c.severanceAllocation==='custom'&&(![c.severanceSafePct,c.severanceVtiPct,c.severanceAorPct,c.severanceAoaPct].every(v=>Number.isFinite(v)&&v>=0&&v<=100)||c.severanceSafePct+c.severanceVtiPct+c.severanceAorPct+c.severanceAoaPct+funds.reduce((sum,f)=>sum+f.severancePct,0)>100+1e-8)))return '퇴직금 배분 방식을 확인하세요. SCHD 외 모든 종목·안전자산 비율은 각각 0~100%, 합계는 100% 이하로 입력하세요.';
+ if(!['annual','custom'].includes(c.severanceAllocation)||(c.severanceAllocation==='custom'&&(![c.severanceSafePct,c.severanceVtiPct,c.severanceAorPct,c.severanceAoaPct,c.severanceQqqPct].every(v=>Number.isFinite(v)&&v>=0&&v<=100)||c.severanceSafePct+c.severanceVtiPct+c.severanceAorPct+c.severanceAoaPct+c.severanceQqqPct+funds.reduce((sum,f)=>sum+f.severancePct,0)>100+1e-8)))return '퇴직금 배분 방식을 확인하세요. SCHD 외 모든 종목·안전자산 비율은 각각 0~100%, 합계는 100% 이하로 입력하세요.';
  return validateStress(c);
 }
 function validateStress(c){
- const ranges={stressCount:[100,5000],stressSeed:[1,4294967295],stressVtiVol:[0,60],stressSchdVol:[0,60],stressAorVol:[0,60],stressAoaVol:[0,60],stressAorCrash:[0,90],stressAoaCrash:[0,90],stressCorr:[-100,100],stressDividendCut:[0,100],stressCrash:[0,90],stressCrashDuration:[1,60]};
+ const ranges={stressCount:[100,5000],stressSeed:[1,4294967295],stressVtiVol:[0,60],stressSchdVol:[0,60],stressAorVol:[0,60],stressAoaVol:[0,60],stressAorCrash:[0,90],stressAoaCrash:[0,90],stressQqqVol:[0,60],stressQqqCrash:[0,90],stressCorr:[-100,100],stressDividendCut:[0,100],stressCrash:[0,90],stressCrashDuration:[1,60]};
  for(const [key,[low,high]] of Object.entries(ranges)){if(!Number.isFinite(c[key])||c[key]<low||c[key]>high)return '스트레스 테스트의 반복 횟수·변동성·급락 설정 범위를 확인하세요.';}
  if(![c.stressCount,c.stressSeed,c.stressCrashDuration].every(Number.isInteger))return '반복 횟수·난수 번호·급락 기간은 정수로 입력하세요.';
  if(!['all','retirement'].includes(c.stressScope)||!['budget','plan'].includes(c.stressSpending))return '스트레스 테스트의 적용 기간과 생활비 방식을 확인하세요.';
@@ -181,8 +183,9 @@ function monthlyMarketPath(c,random){
   shock.aor=shock.active?c.stressAorVol/100/Math.sqrt(12)*(rho*shock.z+residual*radius*Math.cos(angle)):0;
   shock.aoa=shock.active?c.stressAoaVol/100/Math.sqrt(12)*(rho*shock.z+residual*radius*Math.sin(angle)):0;
  }
- for(const k of keys.filter(k=>!ETF_KEYS.includes(k)))for(const shock of shocks){
-  const radius=Math.sqrt(-2*Math.log(random())),angle=2*Math.PI*random();shock[k]=shock.active?fundSetting(c,k,'Vol')/100/Math.sqrt(12)*(rho*shock.z+residual*radius*Math.cos(angle)):0;
+ for(const k of [...keys.filter(k=>!ETF_KEYS.includes(k)),'qqq']){
+  const draw=k==='qqq'?(random.qqq||stressRandom(Math.abs(shocks[0]?.z??0)*1e9)):random;
+  for(const shock of shocks){const radius=Math.sqrt(-2*Math.log(draw())),angle=2*Math.PI*draw();shock[k]=shock.active?fundSetting(c,k,'Vol')/100/Math.sqrt(12)*(rho*shock.z+residual*radius*Math.cos(angle)):0;}
  }
  for(const shock of shocks){for(const k of keys)sums[k]+=shock[k];
  }
@@ -245,8 +248,11 @@ function simulateMonthly(c,marketPath=[],policy=c.stressBufferPolicy){
  return rows;
 }
 // Seeded annual paths remain available for the original calculation checks.
-function stressRandom(seed){let state=seed>>>0;return ()=>{state=(state+0x6D2B79F5)>>>0;let x=state;x=Math.imul(x^(x>>>15),x|1);x^=x+Math.imul(x^(x>>>7),x|61);return (((x^(x>>>14))>>>0)+.5)/4294967296;};}
-function stressShock(v,s,c,a=c.aorPriceGrowth/100,b=c.aoaPriceGrowth/100){const factor=r=>r<=-.20?Math.max(0,1+r*c.stressDividendCut/100):1;return {vtiReturn:v,schdReturn:s,aorReturn:a,aoaReturn:b,vtiDividendFactor:factor(v),schdDividendFactor:factor(s),aorDividendFactor:factor(a),aoaDividendFactor:factor(b)};}
+function stressRandom(seed){let state=seed>>>0;const random=()=>{state=(state+0x6D2B79F5)>>>0;let x=state;x=Math.imul(x^(x>>>15),x|1);x^=x+Math.imul(x^(x>>>7),x|61);return (((x^(x>>>14))>>>0)+.5)/4294967296;};
+ // A separate lazy stream keeps all pre-QQQ trials unchanged, including subsequent paths.
+ let qqq;random.qqq=()=>{qqq??=stressRandom((seed^0x9E3779B9)>>>0);return qqq();};return random;
+}
+function stressShock(v,s,c,a=c.aorPriceGrowth/100,b=c.aoaPriceGrowth/100){const factor=r=>r<=-.20?Math.max(0,1+r*c.stressDividendCut/100):1;return {vtiReturn:v,schdReturn:s,aorReturn:a,aoaReturn:b,qqqReturn:c.qqqPriceGrowth/100,qqqDividendFactor:1,vtiDividendFactor:factor(v),schdDividendFactor:factor(s),aorDividendFactor:factor(a),aoaDividendFactor:factor(b)};}
 function randomMarketPath(c,random){
  const path=[],zs=[],rho=c.stressCorr/100,residual=Math.sqrt(Math.max(0,1-rho*rho));
  for(let t=1;t<=c.retireYears+c.horizon;t++){
@@ -259,10 +265,13 @@ function randomMarketPath(c,random){
   const a=Math.expm1(Math.log1p(c.aorPriceGrowth/100)+c.stressAorVol/100*(rho*zs[i]+residual*radius*Math.cos(angle))),b=Math.expm1(Math.log1p(c.aoaPriceGrowth/100)+c.stressAoaVol/100*(rho*zs[i]+residual*radius*Math.sin(angle)));
   path[i]=stressShock(path[i].vtiReturn,path[i].schdReturn,c,a,b);
  }
- for(const k of fundKeys(c).filter(k=>!ETF_KEYS.includes(k)))for(let i=0;i<path.length;i++){
-  const radius=Math.sqrt(-2*Math.log(random())),angle=2*Math.PI*random();if(c.stressScope==='retirement'&&i<c.retireYears)continue;
-  const r=Math.expm1(Math.log1p(fundSetting(c,k,'PriceGrowth')/100)+fundSetting(c,k,'Vol')/100*(rho*zs[i]+residual*radius*Math.cos(angle)));
-  path[i][k+'Return']=r;path[i][k+'DividendFactor']=r<=-.2?Math.max(0,1+r*c.stressDividendCut/100):1;
+ for(const k of [...fundKeys(c).filter(k=>!ETF_KEYS.includes(k)),'qqq']){
+  const draw=k==='qqq'?(random.qqq||stressRandom(Math.abs(zs[0]??0)*1e9)):random;
+  for(let i=0;i<path.length;i++){
+   const radius=Math.sqrt(-2*Math.log(draw())),angle=2*Math.PI*draw();if(c.stressScope==='retirement'&&i<c.retireYears)continue;
+   const r=Math.expm1(Math.log1p(fundSetting(c,k,'PriceGrowth')/100)+fundSetting(c,k,'Vol')/100*(rho*zs[i]+residual*radius*Math.cos(angle)));
+   path[i][k+'Return']=r;path[i][k+'DividendFactor']=r<=-.2?Math.max(0,1+r*c.stressDividendCut/100):1;
+  }
  }
  return path;
 }

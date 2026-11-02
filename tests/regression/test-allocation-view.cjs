@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),{boot}=require('./test-records.cjs');
 (async()=>{
  const app=boot(new Map(),{timers:fn=>setImmediate(fn)}),n=app.nodes,input=async(id,value)=>{n[id].value=String(value);await n[id].trigger('input');};
  const columnHidden=k=>new RegExp('<th class="allocation-fund-col hidden" data-allocation-fund="'+k+'"').test(n.allocationHeaders.innerHTML),usage=k=>n.fundUsageList.children.find(row=>row.children[1].getAttribute('data-usage-id')===k).children[1];
- assert.ok(columnHidden('aor'));assert.ok(columnHidden('aoa'));assert.equal(n.bulkAorCard.classList.contains('hidden'),true);assert.equal(n.fundSettingsAor.classList.contains('hidden'),true);assert.ok(n.allocationHiddenNote.textContent.includes('미사용 2개'));
+ assert.ok(columnHidden('aor'));assert.ok(columnHidden('aoa'));assert.equal(n.bulkAorCard.classList.contains('hidden'),true);assert.equal(n.fundSettingsAor.classList.contains('hidden'),true);assert.ok(n.allocationHiddenNote.textContent.includes('미사용 3개'));
  const original=JSON.stringify(app.api.getConfig().allocations);await usage('aor').click();assert.ok(!columnHidden('aor'));assert.equal(n.bulkAorCard.classList.contains('hidden'),false);assert.equal(n.startingAorCard.classList.contains('hidden'),false);assert.equal(n.fundSettingsAor.classList.contains('hidden'),false);assert.equal(JSON.stringify(app.api.getConfig().allocations),original);assert.equal(n.bulkAorRatio.value,0);await usage('aor').click();assert.ok(columnHidden('aor'));
  await usage('vti').click();assert.ok(!app.api.getConfig().unusedFunds.includes('vti'));assert.ok(n.fundManagerStatus.textContent.includes('먼저 0'));
  await n.manageAllocationFunds.click();assert.equal(n.fundsTabButton.getAttribute('aria-selected'),'true');

@@ -6,7 +6,7 @@ const $=id=>document.getElementById(id),storageKey='retirement-planner-local-v1'
 let config=structuredClone(DEFAULTS),projection=[],stressResult=null,stressVersion=0,stressRunning=false,stressActiveKey='';
 try{const saved=JSON.parse(localStorage.getItem(storageKey)||'null');if(saved){const candidate=normalizeConfig(saved);if(!validateConfig(candidate))config=candidate;}}catch{}
 const fieldKeys=Object.keys(DEFAULTS).filter(k=>!Array.isArray(DEFAULTS[k]));
-const fundColors={vti:'#176c60',schd:'#be8538',aor:'#426a9c',aoa:'#8465a5',safe:'#9aafa3'};
+const fundColors={vti:'#176c60',schd:'#be8538',aor:'#426a9c',aoa:'#8465a5',qqq:'#715da6',safe:'#9aafa3'};
 const colorFor=(k,c=config)=>fundColors[k]||(c.customFunds||[]).find(f=>f.id===k)?.color||'#a15377';
 const escapeHtml=v=>String(v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const customBulk=new Map(),customBulkCards=new Map(),customSeverance=new Map(),customSeveranceCards=new Map(),customStarting=new Map(),customStartingCards=new Map(),customFundCards=new Map(),customInitialInputs=new Map();
@@ -137,7 +137,7 @@ const decimal=v=>Number(v).toLocaleString('ko-KR',{minimumFractionDigits:1,maxim
 function cashText(v){return Math.abs(v)>=10000?decimal(v/10000)+'억원':amount(v)+'만원';}
 function assetHtml(v){return Math.abs(v)>=10000?decimal(v/10000)+'<span> 억원</span>':amount(v)+'<span> 만원</span>';}
 function displayValue(v,row){return config.realTerms?v/row.deflator:v;}
-function fillFields(){materializeStartingCash();for(const k of fieldKeys){const el=$(k);if(el.type==='checkbox')el.checked=config[k];else el.value=config[k];}$('bulkSafeRatio').value=config.safeSavingPct;const bulk=etfRatiosFor(config,0);$('bulkRatio').value=bulk.vti;$('bulkAorRatio').value=bulk.aor;$('bulkAoaRatio').value=bulk.aoa;renderBudgetItems();renderFundManager();renderFundControls();fillStartingAllocation();}
+function fillFields(){materializeStartingCash();for(const k of fieldKeys){const el=$(k);if(el.type==='checkbox')el.checked=config[k];else el.value=config[k];}$('bulkSafeRatio').value=config.safeSavingPct;const bulk=etfRatiosFor(config,0);$('bulkRatio').value=bulk.vti;$('bulkAorRatio').value=bulk.aor;$('bulkAoaRatio').value=bulk.aoa;$('bulkQqqRatio').value=bulk.qqq;renderBudgetItems();renderFundManager();renderFundControls();fillStartingAllocation();}
 function readFields(){for(const k of fieldKeys){const el=$(k);config[k]=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?el.value:el.value===''?NaN:Number(el.value);}}
 function renderBudgetItems(){
  const list=$('budgetItemsList');list.replaceChildren();
@@ -164,7 +164,7 @@ function renderSeverancePanel(){
  const linked=config.severanceTiming==='retirement',year=severanceYearFor(config),field=$('severanceYear');
  field.disabled=linked;field.min=config.startYear;field.max=config.startYear+config.retireYears+config.horizon;
  if(linked){config.severanceYear=year;field.value=year;}
- const custom=config.severanceAllocation==='custom',index=Math.max(0,year-config.startYear-1),ratio=severanceAllocationFor(config,index,year>config.startYear),valid=[ratio.safe,...fundKeys(config).map(k=>ratio[k])].every(v=>Number.isFinite(v)&&v>=0&&v<=100)&&(!custom||config.severanceSafePct+config.severanceVtiPct+config.severanceAorPct+config.severanceAoaPct+config.customFunds.reduce((sum,f)=>sum+f.severancePct,0)<=100+1e-8);
+ const custom=config.severanceAllocation==='custom',index=Math.max(0,year-config.startYear-1),ratio=severanceAllocationFor(config,index,year>config.startYear),valid=[ratio.safe,...fundKeys(config).map(k=>ratio[k])].every(v=>Number.isFinite(v)&&v>=0&&v<=100)&&(!custom||config.severanceSafePct+config.severanceVtiPct+config.severanceAorPct+config.severanceAoaPct+config.severanceQqqPct+config.customFunds.reduce((sum,f)=>sum+f.severancePct,0)<=100+1e-8);
  $('severanceCustomFields').classList.toggle('hidden',!custom);$('customSeveranceFields').classList.toggle('hidden',!custom);for(const [id,input] of customSeverance){input.disabled=!custom||config.unusedFunds.includes(id);customSeveranceCards.get(id)?.classList.toggle('hidden',config.unusedFunds.includes(id));}
  $('severanceSafePct').disabled=!custom;for(const [k,cap] of Object.entries(ETF_CAPS)){if(k==='schd')continue;$('severance'+cap+'Pct').disabled=!custom||config.unusedFunds.includes(k);$('severance'+cap+'Field').classList.toggle('hidden',config.unusedFunds.includes(k));}$('severanceSchdField').classList.toggle('hidden',config.unusedFunds.includes('schd'));
  $('severanceSchdPct').textContent=valid?decimal(ratio.schd)+'%':'비율 확인';
@@ -172,7 +172,7 @@ function renderSeverancePanel(){
 }
 function bulkAllocationDraft(){
  const read=input=>!input||input.value===''?NaN:Number(input.value),safe=read($('bulkSafeRatio'));
- const ratios={vti:read($('bulkRatio')),aor:read($('bulkAorRatio')),aoa:read($('bulkAoaRatio')),...Object.fromEntries(config.customFunds.map(f=>[f.id,read(customBulk.get(f.id))]))};
+ const ratios={vti:read($('bulkRatio')),aor:read($('bulkAorRatio')),aoa:read($('bulkAoaRatio')),qqq:read($('bulkQqqRatio')),...Object.fromEntries(config.customFunds.map(f=>[f.id,read(customBulk.get(f.id))]))};
  const sum=Object.values(ratios).reduce((a,b)=>a+b,0);ratios.schd=Math.max(0,100-sum);
  const valid=[safe,...Object.values(ratios)].every(v=>Number.isFinite(v)&&v>=0&&v<=100)&&sum<=100+1e-8;
  return {safe,ratios,sum,valid};
@@ -183,7 +183,7 @@ function allocationBadges(values,unit,includeZero=false){
 }
 function allocationTrack(ratios){return '<div class="allocation-track" aria-hidden="true">'+[...fundKeys(config),'safe'].filter(k=>ratios[k]>0).map(k=>'<i style="width:'+ratios[k]+'%;background:'+colorFor(k)+'"></i>').join('')+'</div>';}
 function visibleAllocationFunds(){return fundKeys(config).filter(k=>!config.unusedFunds.includes(k));}
-function bulkInputFor(k){return k==='vti'?$('bulkRatio'):k==='aor'?$('bulkAorRatio'):k==='aoa'?$('bulkAoaRatio'):customBulk.get(k);}
+function bulkInputFor(k){return k==='vti'?$('bulkRatio'):k==='aor'?$('bulkAorRatio'):k==='aoa'?$('bulkAoaRatio'):k==='qqq'?$('bulkQqqRatio'):customBulk.get(k);}
 function refreshAllocationEditor(){
  const draft=bulkAllocationDraft(),visible=new Set(visibleAllocationFunds(draft));
  $('bulkSchdRatio').textContent=Number.isFinite(draft.sum)&&draft.sum<=100+1e-8?decimal(draft.ratios.schd):'—';$('applyRatio').disabled=!draft.valid;
@@ -509,20 +509,20 @@ $('exportStress').addEventListener('click',()=>{
 fieldKeys.forEach(k=>{$(k).addEventListener('input',()=>update());});
 $('toggleSettings').addEventListener('click',()=>{const open=document.body.classList.toggle('settings-open');$('toggleSettings').textContent=open?'계산 설정 닫기':'계산 설정 열기';$('toggleSettings').setAttribute('aria-expanded',String(open));});
 $('allocationRows').addEventListener('input',e=>{
- if(!e.target.matches('[data-year]'))return;const i=Number(e.target.dataset.year),kind=e.target.dataset.kind,key={extra:'extraAssets',safe:'safeAllocations',vti:'allocations',aor:'aorAllocations',aoa:'aoaAllocations'}[kind];const custom=config.customFunds.find(f=>f.id===kind);if(!key&&!custom)return;
+ if(!e.target.matches('[data-year]'))return;const i=Number(e.target.dataset.year),kind=e.target.dataset.kind,key={extra:'extraAssets',safe:'safeAllocations',vti:'allocations',aor:'aorAllocations',aoa:'aoaAllocations',qqq:'qqqAllocations'}[kind];const custom=config.customFunds.find(f=>f.id===kind);if(!key&&!custom)return;
  const target=custom?custom.allocations:config[key];target[i]=e.target.value===''?(kind==='extra'?0:kind==='safe'?null:NaN):Number(e.target.value);update(false);
- if(!validateConfig(config)){const cells=e.target.closest('tr').querySelectorAll('td'),data=allocationCells(i);cells[5].textContent=decimal(etfRatiosFor(config,i).schd);cells[8+config.customFunds.length].innerHTML=data.percent;cells[9+config.customFunds.length].innerHTML=data.money;}
+ if(!validateConfig(config)){const cells=e.target.closest('tr').querySelectorAll('td'),data=allocationCells(i);cells[5].textContent=decimal(etfRatiosFor(config,i).schd);cells[4+fundKeys(config).length].innerHTML=data.percent;cells[5+fundKeys(config).length].innerHTML=data.money;}
 });
 $('openStartingAllocation').addEventListener('click',()=>{showTab('plan');$('investmentAllocationPanel').scrollIntoView({behavior:'smooth',block:'start'});$('startingTotal').focus({preventScroll:true});});
 $('manageAllocationFunds').addEventListener('click',()=>{showTab('funds');$('fundUsageList').scrollIntoView({behavior:'smooth',block:'start'});});
-for(const id of ['startingTotal','startingSafeRatio','startingVtiRatio','startingAorRatio','startingAoaRatio'])$(id).addEventListener('input',applyStartingAllocation);
-for(const id of ['bulkRatio','bulkAorRatio','bulkAoaRatio','bulkSafeRatio']){for(const event of ['input','blur'])$(id).addEventListener(event,refreshAllocationEditor);}
+for(const id of ['startingTotal','startingSafeRatio','startingVtiRatio','startingAorRatio','startingAoaRatio','startingQqqRatio'])$(id).addEventListener('input',applyStartingAllocation);
+for(const id of ['bulkRatio','bulkAorRatio','bulkAoaRatio','bulkQqqRatio','bulkSafeRatio']){for(const event of ['input','blur'])$(id).addEventListener(event,refreshAllocationEditor);}
 $('allocationRows').addEventListener('focusout',()=>refreshAllocationEditor());
 $('applyRatio').addEventListener('click',()=>{
- const read=id=>$(id).value===''?NaN:Number($(id).value),safe=read('bulkSafeRatio'),vti=read('bulkRatio'),aor=read('bulkAorRatio'),aoa=read('bulkAoaRatio');
+ const read=id=>$(id).value===''?NaN:Number($(id).value),safe=read('bulkSafeRatio'),vti=read('bulkRatio'),aor=read('bulkAorRatio'),aoa=read('bulkAoaRatio'),qqq=read('bulkQqqRatio');
  const customValues=config.customFunds.map(f=>customBulk.get(f.id)?.value===''?NaN:Number(customBulk.get(f.id)?.value));
- if(![safe,vti,aor,aoa,...customValues].every(v=>Number.isFinite(v)&&v>=0&&v<=100)||vti+aor+aoa+customValues.reduce((a,b)=>a+b,0)>100+1e-8){$('saveStatus').textContent='각 비율은 0~100%, ETF 내 SCHD 외 종목의 합계는 100% 이하로 입력하세요.';return;}
- config.allocations=Array(90).fill(vti);config.aorAllocations=Array(90).fill(aor);config.aoaAllocations=Array(90).fill(aoa);config.safeAllocations=Array(90).fill(safe);config.customFunds.forEach((f,i)=>f.allocations=Array(90).fill(customValues[i]));update();
+ if(![safe,vti,aor,aoa,qqq,...customValues].every(v=>Number.isFinite(v)&&v>=0&&v<=100)||vti+aor+aoa+qqq+customValues.reduce((a,b)=>a+b,0)>100+1e-8){$('saveStatus').textContent='각 비율은 0~100%, ETF 내 SCHD 외 종목의 합계는 100% 이하로 입력하세요.';return;}
+ config.allocations=Array(90).fill(vti);config.aorAllocations=Array(90).fill(aor);config.aoaAllocations=Array(90).fill(aoa);config.qqqAllocations=Array(90).fill(qqq);config.safeAllocations=Array(90).fill(safe);config.customFunds.forEach((f,i)=>f.allocations=Array(90).fill(customValues[i]));update();
 });
 $('budgetItemsList').addEventListener('input',e=>{const index=Number(e.target.dataset.budgetIndex),key=e.target.dataset.budgetKey;if(!Number.isInteger(index)||!config.budgetItems[index]||!['name','amount','frequency'].includes(key))return;config.budgetItems[index][key]=key==='amount'?(e.target.value===''?NaN:Number(e.target.value)):e.target.value;update(false);});
 $('budgetItemsList').addEventListener('click',e=>{const raw=e.target.dataset.budgetRemove;if(raw===undefined)return;const index=Number(raw);if(!Number.isInteger(index)||!config.budgetItems[index])return;config.budgetItems.splice(index,1);renderBudgetItems();update(false);});

@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),{boot}=require('./test-records.cjs');
 (async()=>{
  const app=boot(new Map()),n=app.nodes,input=async(id,value)=>{n[id].value=String(value);await n[id].trigger('input');},toggle=async checked=>{n.finalSavingSafeOnly.checked=checked;await n.finalSavingSafeOnly.trigger('input');};
  for(const [id,value] of Object.entries({retireYears:2,horizon:3,annualSaving:100,monthlyBudget:0,severanceAmount:1000,cashYield:0,vtiPriceGrowth:0,schdPriceGrowth:0,vtiYield:0,schdYield:0}))await input(id,value);
- const cells=Array.from({length:10},()=>({}));await n.allocationRows.trigger('input',{target:{matches:()=>true,dataset:{year:'1',kind:'safe'},value:'40',closest:()=>({querySelectorAll:()=>cells})}});
+ const cells=Array.from({length:11},()=>({}));await n.allocationRows.trigger('input',{target:{matches:()=>true,dataset:{year:'1',kind:'safe'},value:'40',closest:()=>({querySelectorAll:()=>cells})}});
  await toggle(true);assert.equal(app.api.getConfig().safeAllocations[1],40);assert.ok(n.allocationRows.innerHTML.includes('value="100" disabled'));assert.ok(n.allocationRows.innerHTML.includes('안전자산 100% 옵션'));assert.ok(n.finalSavingSafeNote.textContent.includes('2028년'));
  const r=n.assetChart._chartData.rows[2];assert.equal(r.safeContribution,100);assert.equal(r.cash,1120);assert.ok(n.severanceNote.textContent.includes('안전자산 100.0% (1,000만원)'));
  await input('retireYears',3);assert.equal(app.api.getConfig().safeAllocations[1],40);assert.equal(n.assetChart._chartData.rows[2].safeContribution,40);assert.equal(n.assetChart._chartData.rows[3].safeContribution,100);assert.ok(n.finalSavingSafeNote.textContent.includes('2029년'));

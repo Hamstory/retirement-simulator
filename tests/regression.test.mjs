@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 for (const [id, file, name] of [
+  ['REG-017', 'test-qqq.cjs', '기본 QQQ 설정·배분·배당·저장·스트레스 통합'],
   ['REG-014', 'test-settings-link.cjs', '설정 URL 내보내기·붙여넣기·자동 복원·실패 보호'],
   ['REG-015', 'test-fund-help.cjs', '종목 설명·일반 등록·색상 팔레트·퇴직금 사용 상태'],
   ['REG-016', 'test-projection-dividends.cjs', '계산 내역의 사용 종목·연간 세후 배당과 CSV'],

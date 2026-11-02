@@ -23,7 +23,7 @@ function chooseFundColor(used=[],random=Math.random){
  const available=FUND_COLOR_PRESETS.filter(color=>!used.some(value=>String(value).toLowerCase()===color)),pool=available.length?available:FUND_COLOR_PRESETS,value=Number(random());
  return pool[Math.min(pool.length-1,Math.max(0,Math.floor((Number.isFinite(value)?value:0)*pool.length)))];
 }
-const SERIES_KEYS=['allocations','safeAllocations','extraAssets','aorAllocations','aoaAllocations'];
+const SERIES_KEYS=['allocations','safeAllocations','extraAssets','aorAllocations','aoaAllocations','qqqAllocations'];
 function packSeries(values){
  const runs=[];for(const value of values){const last=runs.at(-1);if(last&&Object.is(last[0],value))last[1]++;else runs.push([value,1]);}
  const packed={r:runs};return JSON.stringify(packed).length<JSON.stringify(values).length?packed:values;
